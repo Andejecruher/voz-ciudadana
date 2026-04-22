@@ -68,7 +68,7 @@ export function EventosSection() {
   }
 
   return (
-    <section id="eventos" className="py-24 px-6 bg-white">
+    <section id="eventos" className="py-24 px-6 bg-white overflow-hidden">
       <div className="max-w-7xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -100,7 +100,7 @@ export function EventosSection() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: i * 0.08 }}
-                className="bg-muted rounded-2xl p-6 border border-border hover:border-primary/30 transition-all duration-200 flex gap-5"
+                className="bg-muted rounded-2xl p-6 border border-border hover:border-primary/30 transition-all duration-200 flex gap-5 overflow-hidden"
               >
                 {/* Date badge */}
                 <div className="shrink-0 w-16 text-center">
@@ -121,10 +121,10 @@ export function EventosSection() {
                 <div className="flex-1 min-w-0">
                   <h3 className="font-black text-foreground text-base mb-1">{titulo}</h3>
                   <div className="flex flex-col gap-1 mb-3">
-                    <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
+                    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-muted-foreground text-xs">
                       <Clock className="w-3.5 h-3.5 shrink-0" />
                       {hora}
-                      <span className="mx-1 text-border">·</span>
+                      <span className="text-border">·</span>
                       <span className="text-secondary font-semibold">{cupo}</span>
                     </div>
                     <div className="flex items-center gap-1.5 text-muted-foreground text-xs">
