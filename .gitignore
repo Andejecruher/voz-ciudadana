@@ -1,0 +1,13 @@
+# Entorno local
+backend/.env
+
+# Bytecode Python
+__pycache__/
+*.py[cod]
+
+# Entorno virtual
+.venv/
+venv/
+
+# Alembic cache
+backend/alembic/versions/__pycache__/
