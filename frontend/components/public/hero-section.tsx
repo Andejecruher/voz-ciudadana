@@ -67,7 +67,7 @@ export function HeroSection() {
           >
             {/* WhatsApp CTA */}
             <a
-              href="https://wa.me/5551468932?text=Hola%2C+quiero+sumarme+a+Voz+Ciudadana"
+              href="https://wa.me/15551468932?text=Hola%2C+quiero+sumarme+a+Voz+Ciudadana"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1ebe5d] text-white font-bold text-base px-8 py-3.5 rounded-full transition-colors shadow-lg shadow-green-700/30"
@@ -106,7 +106,7 @@ export function HeroSection() {
 
       {/* Floating WhatsApp button */}
       <motion.a
-        href="https://wa.me/5551468932?text=Hola%2C+quiero+sumarme+a+Voz+Ciudadana"
+        href="https://wa.me/15551468932?text=Hola%2C+quiero+sumarme+a+Voz+Ciudadana"
         target="_blank"
         rel="noopener noreferrer"
         initial={{ opacity: 0, scale: 0.8 }}

@@ -1,6 +1,6 @@
 'use client'
 
-import { Check, Facebook, Instagram, Mail, Twitter, Youtube } from 'lucide-react'
+import { Check, Facebook, Mail } from 'lucide-react'
 import { useState } from 'react'
 
 export function PublicFooter() {
@@ -79,10 +79,11 @@ export function PublicFooter() {
             </p>
             {/* Social */}
             <div className="flex items-center gap-3 mt-6">
-              {[Facebook, Twitter, Instagram, Youtube].map((Icon, i) => (
+              {[Facebook].map((Icon, i) => (
                 <a
                   key={i}
-                  href="#"
+                  target='__blank'
+                  href="https://www.facebook.com/karina.alvarado.735"
                   className="w-8 h-8 rounded-lg bg-sidebar-accent hover:bg-primary/30 flex items-center justify-center text-sidebar-foreground/50 hover:text-white transition-colors"
                   aria-label="Redes sociales"
                 >
