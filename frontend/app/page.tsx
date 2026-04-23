@@ -1,12 +1,28 @@
-import { PublicNav } from '@/components/public/public-nav'
-import { HeroSection } from '@/components/public/hero-section'
-import { VisionSection } from '@/components/public/vision-section'
-import { PropuestasSection } from '@/components/public/propuestas-section'
 import { EventosSection } from '@/components/public/eventos-section'
-import { SumateSection } from '@/components/public/sumate-section'
 import { GaleriaSection } from '@/components/public/galeria-section'
-import { TeamSection } from '@/components/public/team-section'
+import { HeroSection } from '@/components/public/hero-section'
+import { PropuestasSection } from '@/components/public/propuestas-section'
 import { PublicFooter } from '@/components/public/public-footer'
+import { PublicNav } from '@/components/public/public-nav'
+import { SumateSection } from '@/components/public/sumate-section'
+import { TeamSection } from '@/components/public/team-section'
+import { VisionSection } from '@/components/public/vision-section'
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'Cintalapa tiene voz de mujer',
+  description:
+    'Conocé las propuestas, los eventos y el equipo detrás de Voz Ciudadana, la candidata que nació y creció en Cintalapa de Figueroa, Chiapas. ¡Sumate al cambio!',
+  alternates: {
+    canonical: '/',
+  },
+  openGraph: {
+    title: 'Voz Ciudadana — Cintalapa tiene voz de mujer',
+    description:
+      'Conocé las propuestas, los eventos y el equipo detrás de Voz Ciudadana, la candidata que nació y creció en Cintalapa de Figueroa, Chiapas. ¡Sumate al cambio!',
+    url: '/',
+  },
+}
 
 export default function LandingPage() {
   return (
