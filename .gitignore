@@ -1,5 +1,6 @@
 # Entorno local
 backend/.env
+backend/.env.production
 
 # Bytecode Python
 __pycache__/
