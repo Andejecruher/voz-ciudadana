@@ -3,6 +3,7 @@ import { Montserrat } from 'next/font/google'
 import './globals.css'
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://vozciudadana.mx'
+const OG_IMAGE_URL = `${BASE_URL}/images/og-image.png`
 
 const montserrat = Montserrat({
   subsets: ['latin'],
@@ -49,7 +50,7 @@ export const metadata: Metadata = {
       'Candidata de Cintalapa de Figueroa, Chiapas. Agua, seguridad y campo próspero para cada familia. Nací aquí, crecí aquí y juntas haremos historia.',
     images: [
       {
-        url: '/images/og-image.png',
+        url: OG_IMAGE_URL,
         width: 1200,
         height: 630,
         alt: 'Voz Ciudadana — Cintalapa de Figueroa, Chiapas',
@@ -62,7 +63,7 @@ export const metadata: Metadata = {
     title: 'Voz Ciudadana — Cintalapa tiene voz de mujer',
     description:
       'Candidata de Cintalapa de Figueroa, Chiapas. Agua, seguridad y campo próspero para cada familia.',
-    images: ['/images/og-image.png'],
+    images: [OG_IMAGE_URL],
   },
 
   alternates: {
