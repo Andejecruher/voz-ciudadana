@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import verify_meta_signature
+from app.schemas.common import ErrorResponse, WebhookReceivedResponse
 from app.schemas.webhook import WebhookPayload
 from app.services.whatsapp_bot_service import WhatsAppBotService
 
@@ -21,7 +22,24 @@ router = APIRouter()
 
 # ─── GET: verificación de webhook ────────────────────────────────────────────
 
-@router.get("/webhook", tags=["WhatsApp Webhook"])
+@router.get(
+    "/webhook",
+    tags=["WhatsApp Webhook"],
+    summary="Verificación del webhook (Meta)",
+    description=(
+        "Meta llama a este endpoint al registrar la URL del webhook. "
+        "Verifica el `hub.verify_token` configurado en el servidor y responde con "
+        "`hub.challenge` en texto plano para confirmar la URL.\n\n"
+        "**No llamar manualmente** — es invocado exclusivamente por la plataforma de Meta."
+    ),
+    responses={
+        200: {"description": "Token válido — challenge devuelto en texto plano."},
+        403: {
+            "model": ErrorResponse,
+            "description": "Token de verificación inválido.",
+        },
+    },
+)
 async def verify_webhook(request: Request):
     """
     Meta llama a este endpoint al registrar el webhook.
@@ -47,12 +65,36 @@ async def verify_webhook(request: Request):
 
 # ─── POST: mensajes entrantes ─────────────────────────────────────────────────
 
-@router.post("/webhook", status_code=status.HTTP_200_OK, tags=["WhatsApp Webhook"])
+@router.post(
+    "/webhook",
+    status_code=status.HTTP_200_OK,
+    response_model=WebhookReceivedResponse,
+    tags=["WhatsApp Webhook"],
+    summary="Recibir eventos de mensajes (Meta)",
+    description=(
+        "Recibe eventos de la Meta Cloud API de WhatsApp. El flujo es:\n\n"
+        "1. Valida la firma **HMAC-SHA256** del header `X-Hub-Signature-256`.\n"
+        "2. Parsea el payload con el schema `WebhookPayload`.\n"
+        "3. Procesa los mensajes en **background** para responder a Meta en < 5 s.\n\n"
+        "Meta requiere siempre **200 OK** independientemente del resultado del procesamiento."
+    ),
+    responses={
+        200: {"description": "Evento recibido y encolado para procesamiento."},
+        401: {
+            "model": ErrorResponse,
+            "description": "Firma HMAC-SHA256 inválida o ausente.",
+        },
+        422: {
+            "model": ErrorResponse,
+            "description": "El cuerpo del request no es un payload válido de Meta.",
+        },
+    },
+)
 async def receive_webhook(
     request: Request,
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
-):
+) -> WebhookReceivedResponse:
     """
     Recibe eventos de mensajes de Meta.
     1. Valida la firma HMAC-SHA256 del cuerpo.
@@ -83,7 +125,7 @@ async def receive_webhook(
     background_tasks.add_task(_process_webhook_payload, payload, db)
 
     # Meta espera siempre 200 OK
-    return {"status": "received"}
+    return WebhookReceivedResponse()
 
 
 # ─── Procesamiento en background ─────────────────────────────────────────────

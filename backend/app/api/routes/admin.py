@@ -15,6 +15,7 @@ from app.core.database import get_db
 from app.db.models.role import Role, UserRole
 from app.db.models.user import User
 from app.schemas.auth import AssignRoleRequest, UserCreate, UserOut
+from app.schemas.common import ErrorResponse
 from app.services.auth_service import hash_password
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -22,12 +23,31 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 # Alias para la dependencia de rol admin — más legible en los decoradores
 AdminRequired = Depends(require_roles(["admin"]))
 
+_RESPONSES_ADMIN = {
+    401: {"model": ErrorResponse, "description": "Token ausente, inválido o expirado."},
+    403: {"model": ErrorResponse, "description": "El usuario no tiene rol admin."},
+}
+
 
 @router.post(
     "/users",
     response_model=UserOut,
     status_code=status.HTTP_201_CREATED,
     summary="Crear usuario del sistema",
+    description=(
+        "Crea un nuevo usuario del sistema (admin, agente, readonly, etc.). "
+        "El usuario creado estará activo pero **sin roles asignados**; "
+        "usar `POST /admin/users/{user_id}/roles` para asignarlos. "
+        "Solo accesible para administradores."
+    ),
+    responses={
+        201: {"description": "Usuario creado exitosamente."},
+        409: {
+            "model": ErrorResponse,
+            "description": "Ya existe un usuario con ese email.",
+        },
+        **_RESPONSES_ADMIN,
+    },
 )
 async def create_user(
     payload: UserCreate,
@@ -71,6 +91,20 @@ async def create_user(
     "/users/{user_id}/roles",
     response_model=UserOut,
     summary="Asignar rol a usuario",
+    description=(
+        "Asigna un rol a un usuario existente. "
+        "La operación es **idempotente**: si el usuario ya tiene el rol, no se duplica. "
+        "Roles válidos: `admin`, `agent`, `readonly`. "
+        "Solo accesible para administradores."
+    ),
+    responses={
+        200: {"description": "Rol asignado (o ya existía). Devuelve el perfil actualizado."},
+        404: {
+            "model": ErrorResponse,
+            "description": "Usuario o rol no encontrado.",
+        },
+        **_RESPONSES_ADMIN,
+    },
 )
 async def assign_role(
     user_id: uuid.UUID,

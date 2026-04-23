@@ -13,12 +13,39 @@ from app.core.database import get_db
 from app.db.models.role import UserRole
 from app.db.models.user import User
 from app.schemas.auth import LoginRequest, TokenResponse, UserOut
+from app.schemas.common import ErrorResponse
 from app.services.auth_service import create_access_token, verify_password
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
+_UNAUTHORIZED = {
+    "model": ErrorResponse,
+    "description": "Credenciales incorrectas o token inválido/expirado.",
+}
+_FORBIDDEN = {
+    "model": ErrorResponse,
+    "description": "El usuario no tiene permisos suficientes.",
+}
 
-@router.post("/login", response_model=TokenResponse, summary="Iniciar sesión")
+
+@router.post(
+    "/login",
+    response_model=TokenResponse,
+    summary="Iniciar sesión",
+    description=(
+        "Autentica al usuario con email + contraseña y devuelve un **JWT Bearer token**. "
+        "El token debe enviarse en el header `Authorization: Bearer <token>` para acceder "
+        "a los endpoints protegidos."
+    ),
+    responses={
+        200: {"description": "Login exitoso — token JWT devuelto."},
+        401: _UNAUTHORIZED,
+        403: {
+            "model": ErrorResponse,
+            "description": "Usuario inactivo.",
+        },
+    },
+)
 async def login(
     payload: LoginRequest,
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -58,7 +85,19 @@ async def login(
     return TokenResponse(access_token=token)
 
 
-@router.get("/me", response_model=UserOut, summary="Perfil del usuario autenticado")
+@router.get(
+    "/me",
+    response_model=UserOut,
+    summary="Perfil del usuario autenticado",
+    description=(
+        "Devuelve el perfil completo del usuario autenticado, incluyendo sus roles. "
+        "Requiere un JWT válido en el header `Authorization: Bearer <token>`."
+    ),
+    responses={
+        200: {"description": "Perfil del usuario autenticado."},
+        401: _UNAUTHORIZED,
+    },
+)
 async def me(
     current_user: Annotated[User, Depends(get_current_user)],
 ) -> UserOut:
