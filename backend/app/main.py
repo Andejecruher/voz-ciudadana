@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.router import api_router
 from app.core.config import settings
+from app.db import base  # noqa: F401  # registra todos los modelos ORM
 
 # ── Logging básico ────────────────────────────────────────────────────────────
 logging.basicConfig(

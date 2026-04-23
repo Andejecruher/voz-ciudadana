@@ -62,6 +62,9 @@ Variables obligatorias:
 | `WHATSAPP_APP_SECRET`      | App Secret de la app Meta                          |
 | `WHATSAPP_ACCESS_TOKEN`    | Token de la Cloud API de WhatsApp                  |
 | `WHATSAPP_PHONE_NUMBER_ID` | ID del número de teléfono en Meta                  |
+| `JWT_SECRET_KEY`           | Clave secreta para firmar tokens JWT               |
+| `JWT_ALGORITHM`            | Algoritmo JWT (default: `HS256`)                   |
+| `JWT_EXPIRE_MINUTES`       | Duración del access token en minutos (default: 60) |
 
 ### 2. Levantar con Docker Compose
 
@@ -120,11 +123,78 @@ Si el barrio no está en la lista, el bot pide reintento sin avanzar de estado.
 
 ## Endpoints disponibles
 
-| Método | Ruta              | Descripción                    |
-| ------ | ----------------- | ------------------------------ |
-| GET    | `/api/v1/health`  | Estado de la API               |
-| GET    | `/api/v1/webhook` | Verificación del webhook Meta  |
-| POST   | `/api/v1/webhook` | Recepción de mensajes WhatsApp |
+| Método | Ruta                               | Descripción                              | Auth requerida |
+| ------ | ---------------------------------- | ---------------------------------------- | -------------- |
+| GET    | `/api/v1/health`                   | Estado de la API                         | No             |
+| GET    | `/api/v1/webhook`                  | Verificación del webhook Meta            | No             |
+| POST   | `/api/v1/webhook`                  | Recepción de mensajes WhatsApp           | No (HMAC)      |
+| POST   | `/api/v1/auth/login`               | Login con email + password → JWT         | No             |
+| GET    | `/api/v1/auth/me`                  | Perfil del usuario autenticado           | Bearer JWT     |
+| POST   | `/api/v1/admin/users`              | Crear usuario del sistema                | Admin only     |
+| POST   | `/api/v1/admin/users/{id}/roles`   | Asignar rol a un usuario                 | Admin only     |
+
+---
+
+## Auth API
+
+### Login
+
+```bash
+curl -X POST http://localhost:8000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "admin@example.com", "password": "supersecret"}'
+```
+
+Respuesta:
+```json
+{"access_token": "<jwt>", "token_type": "bearer"}
+```
+
+### Perfil autenticado
+
+```bash
+curl http://localhost:8000/api/v1/auth/me \
+  -H "Authorization: Bearer <jwt>"
+```
+
+### Crear usuario (solo admin)
+
+```bash
+curl -X POST http://localhost:8000/api/v1/admin/users \
+  -H "Authorization: Bearer <jwt_admin>" \
+  -H "Content-Type: application/json" \
+  -d '{"email": "agente@example.com", "password": "agente1234", "full_name": "Juan Pérez"}'
+```
+
+### Asignar rol (solo admin)
+
+```bash
+# Roles disponibles: admin, agent, readonly
+curl -X POST http://localhost:8000/api/v1/admin/users/<user_id>/roles \
+  -H "Authorization: Bearer <jwt_admin>" \
+  -H "Content-Type: application/json" \
+  -d '{"role_name": "agent"}'
+```
+
+### Flujo completo de primer setup
+
+```bash
+# 1. Crear superuser directamente en DB (solo la primera vez)
+#    INSERT INTO users (id, email, hashed_password, is_superuser)
+#    VALUES (gen_random_uuid(), 'admin@example.com', '<bcrypt_hash>', true)
+#
+# 2. Login
+TOKEN=$(curl -s -X POST .../auth/login -d '{"email":"admin@example.com","password":"..."}' | jq -r .access_token)
+#
+# 3. Crear agente
+curl -X POST .../admin/users -H "Authorization: Bearer $TOKEN" -d '{"email":"agente@...","password":"..."}'
+#
+# 4. Asignar rol
+curl -X POST .../admin/users/<id>/roles -H "Authorization: Bearer $TOKEN" -d '{"role_name":"agent"}'
+```
+
+> **Roles del sistema:** `admin` (acceso total), `agent` (gestiona conversaciones), `readonly` (solo lectura).  
+> Los `superuser` tienen acceso irrestricto sin importar sus roles asignados.
 
 ---
 

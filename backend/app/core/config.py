@@ -18,8 +18,13 @@ class Settings(BaseSettings):
     whatsapp_access_token: str
     whatsapp_phone_number_id: str
 
-    # ── Seguridad ──────────────────────────────────────────────────────────────
+    # ── Seguridad general ──────────────────────────────────────────────────────
     secret_key: str = "insecure-default-change-me"
+
+    # ── JWT ───────────────────────────────────────────────────────────────────
+    jwt_secret_key: str = "insecure-jwt-secret-change-me"
+    jwt_algorithm: str = "HS256"
+    jwt_expire_minutes: int = 60
 
     # ── Entorno ────────────────────────────────────────────────────────────────
     environment: str = "development"
