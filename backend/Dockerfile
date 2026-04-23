@@ -1,38 +1,35 @@
-# ── Etapa 1: dependencias ──────────────────────────────────────────────────────
-FROM python:3.11-slim AS builder
-
-WORKDIR /build
-
-# Instalar dependencias del sistema necesarias para asyncpg
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copiar solo requirements primero para aprovechar caché de capas
-COPY requirements.txt .
-
-# Instalar en directorio aislado para copiarlo luego
-RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
-
-
-# ── Etapa 2: imagen final ──────────────────────────────────────────────────────
-FROM python:3.11-slim AS runtime
-
-# Variables de entorno para Python
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+# ─── Build stage ──────────────────────────────────────────────────────────────
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copiar dependencias instaladas desde la etapa builder
-COPY --from=builder /install /usr/local
+# Copiar manifests primero para aprovechar caché de layers
+COPY package.json tsconfig.json ./
+RUN npm install --frozen-lockfile
 
-# Copiar código fuente
-COPY . .
+# Copiar schema de Prisma y generar cliente
+COPY prisma ./prisma
+RUN npx prisma generate
 
-# Exponer puerto de la API
-EXPOSE 8000
+# Copiar código fuente y compilar
+COPY src ./src
+RUN npm run build
 
-# Comando por defecto — uvicorn en modo recarga en desarrollo
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# ─── Runtime stage ────────────────────────────────────────────────────────────
+FROM node:20-alpine AS runner
+
+WORKDIR /app
+
+# Solo dependencias de producción
+COPY package.json ./
+RUN npm install --omit=dev --frozen-lockfile
+
+# Copiar cliente Prisma generado y dist compilado
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/dist ./dist
+COPY prisma ./prisma
+
+EXPOSE 3000
+
+# Ejecutar migraciones y luego iniciar la app Express
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/server.js"]

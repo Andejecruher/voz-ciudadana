@@ -2,11 +2,12 @@ version: "3.9"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # VozCiudadana — docker-compose para desarrollo local
+# Stack: NestJS + Prisma + PostgreSQL + Redis
 # ─────────────────────────────────────────────────────────────────────────────
 
 services:
 
-  # ── API FastAPI ──────────────────────────────────────────────────────────────
+  # ── API NestJS (WhatsApp bot + Prisma) ─────────────────────────────────────
   api:
     build:
       context: ./backend
@@ -15,11 +16,13 @@ services:
     restart: unless-stopped
     env_file:
       - ./backend/.env
+    environment:
+      DATABASE_URL: postgresql://voz:secret@postgres:5432/vozcuidadana
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      PORT: 3000
     ports:
-      - "8000:8000"
-    volumes:
-      # Montar código fuente para hot-reload en desarrollo
-      - ./backend:/app
+      - "3000:3000"
     depends_on:
       postgres:
         condition: service_healthy

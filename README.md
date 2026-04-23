@@ -8,37 +8,44 @@ Plataforma de participación ciudadana que permite a vecinos interactuar con su 
 
 ```
 voz-ciudadana/
-├── backend/               # API FastAPI (Python 3.11+)
-│   ├── app/
-│   │   ├── core/          # Config, DB connection, Security utilities
-│   │   ├── api/           # Routers y endpoints HTTP
-│   │   ├── db/            # Modelos SQLAlchemy (ORM)
-│   │   ├── schemas/       # Schemas Pydantic v2 (validación / serialización)
-│   │   └── services/      # Lógica de negocio (WhatsApp bot FSM)
-│   ├── alembic/           # Migraciones de base de datos
-│   ├── requirements.txt
+├── backend/               # API Express (Node.js 20+)
+│   ├── src/
+│   │   ├── config/        # Tipos de env (AppEnv) y tipos de dominio compartidos
+│   │   ├── router/        # createAppRouter — wiring manual de dependencias + rutas Express
+│   │   ├── controller/    # Controllers HTTP (funciones handler de Express)
+│   │   ├── services/      # Servicios de dominio e infraestructura
+│   │   │   ├── prisma.service.ts
+│   │   │   ├── redis.service.ts
+│   │   │   ├── whatsapp-bot.service.ts
+│   │   │   └── webhook.service.ts
+│   │   ├── utils/         # Helpers reutilizables (hmac, normalización de teléfono)
+│   │   └── server.ts      # Bootstrap Express — entry point
+│   ├── prisma/            # Schema y migraciones (Prisma ORM)
 │   ├── Dockerfile
 │   └── .env.example
 ├── frontend/              # (reservado — vacío por ahora)
 └── docker-compose.yml     # Orquestación local: api + postgres + redis
 ```
 
-### Capas (Clean Architecture)
+### Capas del backend
 
-| Capa                         | Directorio    | Responsabilidad                       |
-| ---------------------------- | ------------- | ------------------------------------- |
-| **Infraestructura**          | `core/`       | Configuración, conexión DB, seguridad |
-| **Entidades / Persistencia** | `db/models/`  | Modelos SQLAlchemy                    |
-| **Contratos de datos**       | `schemas/`    | Pydantic v2 (entrada/salida)          |
-| **Lógica de negocio**        | `services/`   | Bot FSM, reglas de dominio            |
-| **Adaptadores HTTP**         | `api/routes/` | Endpoints FastAPI                     |
+| Capa             | Directorio        | Responsabilidad                                              |
+| ---------------- | ----------------- | ------------------------------------------------------------ |
+| **Config**       | `config/`         | Tipos de variables de entorno (`AppEnv`) y tipos de dominio  |
+| **Router**       | `router/`         | `createAppRouter` — monta rutas y wirings de controllers     |
+| **Controller**   | `controller/`     | Handlers de Express (recibe req/res, delega a service)       |
+| **Services**     | `services/`       | Lógica de negocio + infraestructura (Prisma, Redis, Bot FSM) |
+| **Utils**        | `utils/`          | Helpers puros: validación HMAC, normalización de teléfono    |
+| **Persistencia** | `prisma/`         | Schema Prisma, migraciones                                   |
+| **Entrada**      | `server.ts`       | Bootstrap Express                                            |
 
 ### Stack
 
-- **FastAPI** + **Uvicorn** — API asíncrona
-- **PostgreSQL 16** + **SQLAlchemy 2 async** + **Alembic** — persistencia
-- **Redis 7** — estado FSM del bot (TTL 24 h)
-- **Pydantic v2** + **pydantic-settings** — validación y config
+- **Express 4** + **Node.js 20** — API HTTP minimalista y tipada
+- **TypeScript 5** — tipos estrictos end-to-end
+- **PostgreSQL 16** + **Prisma 5** — persistencia con ORM type-safe
+- **Redis 7** — estado FSM del bot (TTL 24 h) via ioredis
+- **swagger-jsdoc + swagger-ui-express** — documentación OpenAPI 3.0
 - **Docker** multi-stage — imagen de producción liviana
 
 ---
@@ -54,17 +61,17 @@ cp backend/.env.example backend/.env
 
 Variables obligatorias:
 
-| Variable                   | Descripción                                        |
-| -------------------------- | -------------------------------------------------- |
-| `DATABASE_URL`             | URL asyncpg de PostgreSQL                          |
-| `REDIS_URL`                | URL de Redis                                       |
-| `WHATSAPP_VERIFY_TOKEN`    | Token de verificación del webhook (lo definís vos) |
-| `WHATSAPP_APP_SECRET`      | App Secret de la app Meta                          |
-| `WHATSAPP_ACCESS_TOKEN`    | Token de la Cloud API de WhatsApp                  |
-| `WHATSAPP_PHONE_NUMBER_ID` | ID del número de teléfono en Meta                  |
-| `JWT_SECRET_KEY`           | Clave secreta para firmar tokens JWT               |
-| `JWT_ALGORITHM`            | Algoritmo JWT (default: `HS256`)                   |
-| `JWT_EXPIRE_MINUTES`       | Duración del access token en minutos (default: 60) |
+| Variable               | Descripción                                        |
+| ---------------------- | -------------------------------------------------- |
+| `DATABASE_URL`         | URL de conexión PostgreSQL (Prisma format)         |
+| `REDIS_HOST`           | Host de Redis                                      |
+| `REDIS_PORT`           | Puerto de Redis                                    |
+| `WA_VERIFY_TOKEN`      | Token de verificación del webhook (lo definís vos) |
+| `WA_APP_SECRET`        | App Secret de la app Meta                          |
+| `WA_ACCESS_TOKEN`      | Token de la Cloud API de WhatsApp                  |
+| `WA_PHONE_NUMBER_ID`   | ID del número de teléfono en Meta                  |
+| `PORT`                 | Puerto de la API (default: `3000`)                 |
+| `NODE_ENV`             | Entorno (development / production)                 |
 
 ### 2. Levantar con Docker Compose
 
@@ -72,22 +79,54 @@ Variables obligatorias:
 docker-compose up --build
 ```
 
-La API queda disponible en `http://localhost:8000`.  
-Swagger UI: `http://localhost:8000/docs`
+La API queda disponible en `http://localhost:3000`.
 
-### 3. Ejecutar migraciones
-
-```bash
-# Dentro del contenedor de la API (o con venv local)
-docker-compose exec api alembic upgrade head
-```
-
-### 4. Crear una nueva migración tras cambiar modelos
+### 3. Desarrollo local (sin Docker)
 
 ```bash
-docker-compose exec api alembic revision --autogenerate -m "descripcion_del_cambio"
-docker-compose exec api alembic upgrade head
+cd backend
+npm install
+
+# Generar cliente Prisma
+npx prisma generate
+
+# Ejecutar migraciones
+npx prisma migrate dev
+
+# Iniciar en modo watch
+npm run start:dev
 ```
+
+La API corre en `http://localhost:3000`.  
+Documentación Swagger en `http://localhost:3000/docs`.
+
+### 4. Ejecutar migraciones (producción)
+
+```bash
+# Dentro del contenedor de la API
+docker-compose exec api npx prisma migrate deploy
+
+# O localmente
+cd backend && npx prisma migrate deploy
+```
+
+### 5. Crear una nueva migración tras cambiar el schema
+
+```bash
+cd backend && npx prisma migrate dev --name descripcion_del_cambio
+```
+
+---
+
+## Endpoints
+
+### Health check
+
+```
+GET /health
+```
+
+Retorna `{ status: "ok", ts: "<iso-timestamp>" }`.
 
 ---
 
@@ -95,112 +134,44 @@ docker-compose exec api alembic upgrade head
 
 ### Verificación (GET)
 
-Meta llama a `GET /api/v1/webhook?hub.mode=subscribe&hub.verify_token=TOKEN&hub.challenge=CHALLENGE`.
+Meta llama a `GET /webhook?hub.mode=subscribe&hub.verify_token=TOKEN&hub.challenge=CHALLENGE`.
 
-El endpoint valida el token contra `WHATSAPP_VERIFY_TOKEN` y responde con el challenge en texto plano.
+El endpoint valida el token contra `WA_VERIFY_TOKEN` y responde con el challenge en texto plano.
 
 ### Mensajes entrantes (POST)
 
-Meta envía un `POST /api/v1/webhook` con el payload JSON firmado con HMAC-SHA256.
+Meta envía un `POST /webhook` con el payload JSON firmado con HMAC-SHA256.
 
-El header `X-Hub-Signature-256: sha256=<digest>` se valida usando el `WHATSAPP_APP_SECRET`.  
+El header `X-Hub-Signature-256: sha256=<digest>` se valida usando el `WA_APP_SECRET`.
 Si la firma es inválida, se responde `401 Unauthorized`.
 
-> **Importante:** el endpoint siempre responde `200 OK` a Meta en menos de 5 segundos.  
-> El procesamiento real ocurre en un `BackgroundTask` de FastAPI.
+> **Importante:** el endpoint siempre responde `200 OK` a Meta en menos de 5 segundos.
+> El procesamiento real ocurre de forma asíncrona.
+
+### Documentación interactiva
+
+```
+http://localhost:3000/docs       # Swagger UI
+http://localhost:3000/docs.json  # OpenAPI JSON spec
+```
 
 ### Flujo de registro FSM
 
 ```
-Estado 0 → bot saluda, pide nombre
-Estado 1 → recibe nombre, lo guarda en Redis, pide barrio
-Estado 2 → valida barrio (lista estática), registra ciudadano en DB
+Estado START         → bot saluda, pide nombre completo
+Estado AWAITING_NAME → recibe nombre, lo guarda en DB y Redis, pide colonia
+Estado AWAITING_COLONY → valida elección de colonia, pide intereses
+Estado AWAITING_INTERESTS → registra intereses, activa ciudadano, COMPLETE
+Estado COMPLETE      → mensajes se persisten, pendiente de derivación a agente
 ```
 
-Si el barrio no está en la lista, el bot pide reintento sin avanzar de estado.
-
----
-
-## Endpoints disponibles
-
-| Método | Ruta                               | Descripción                              | Auth requerida |
-| ------ | ---------------------------------- | ---------------------------------------- | -------------- |
-| GET    | `/api/v1/health`                   | Estado de la API                         | No             |
-| GET    | `/api/v1/webhook`                  | Verificación del webhook Meta            | No             |
-| POST   | `/api/v1/webhook`                  | Recepción de mensajes WhatsApp           | No (HMAC)      |
-| POST   | `/api/v1/auth/login`               | Login con email + password → JWT         | No             |
-| GET    | `/api/v1/auth/me`                  | Perfil del usuario autenticado           | Bearer JWT     |
-| POST   | `/api/v1/admin/users`              | Crear usuario del sistema                | Admin only     |
-| POST   | `/api/v1/admin/users/{id}/roles`   | Asignar rol a un usuario                 | Admin only     |
-
----
-
-## Auth API
-
-### Login
-
-```bash
-curl -X POST http://localhost:8000/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email": "admin@example.com", "password": "supersecret"}'
-```
-
-Respuesta:
-```json
-{"access_token": "<jwt>", "token_type": "bearer"}
-```
-
-### Perfil autenticado
-
-```bash
-curl http://localhost:8000/api/v1/auth/me \
-  -H "Authorization: Bearer <jwt>"
-```
-
-### Crear usuario (solo admin)
-
-```bash
-curl -X POST http://localhost:8000/api/v1/admin/users \
-  -H "Authorization: Bearer <jwt_admin>" \
-  -H "Content-Type: application/json" \
-  -d '{"email": "agente@example.com", "password": "agente1234", "full_name": "Juan Pérez"}'
-```
-
-### Asignar rol (solo admin)
-
-```bash
-# Roles disponibles: admin, agent, readonly
-curl -X POST http://localhost:8000/api/v1/admin/users/<user_id>/roles \
-  -H "Authorization: Bearer <jwt_admin>" \
-  -H "Content-Type: application/json" \
-  -d '{"role_name": "agent"}'
-```
-
-### Flujo completo de primer setup
-
-```bash
-# 1. Crear superuser directamente en DB (solo la primera vez)
-#    INSERT INTO users (id, email, hashed_password, is_superuser)
-#    VALUES (gen_random_uuid(), 'admin@example.com', '<bcrypt_hash>', true)
-#
-# 2. Login
-TOKEN=$(curl -s -X POST .../auth/login -d '{"email":"admin@example.com","password":"..."}' | jq -r .access_token)
-#
-# 3. Crear agente
-curl -X POST .../admin/users -H "Authorization: Bearer $TOKEN" -d '{"email":"agente@...","password":"..."}'
-#
-# 4. Asignar rol
-curl -X POST .../admin/users/<id>/roles -H "Authorization: Bearer $TOKEN" -d '{"role_name":"agent"}'
-```
-
-> **Roles del sistema:** `admin` (acceso total), `agent` (gestiona conversaciones), `readonly` (solo lectura).  
-> Los `superuser` tienen acceso irrestricto sin importar sus roles asignados.
+Si la entrada no es válida en cualquier estado, el bot pide reintento sin avanzar.
 
 ---
 
 ## Notas de producción
 
-- Cambiar `ENVIRONMENT=production` para deshabilitar Swagger UI y reducir logging.
+- Cambiar `NODE_ENV=production` para ajustar logging y optimizaciones.
 - Restringir `allow_origins` en CORS al dominio del frontend.
 - Usar secrets manager (AWS Secrets Manager, Vault, etc.) en lugar de `.env` para credenciales.
 - Escalar Redis con autenticación habilitada (`requirepass`).

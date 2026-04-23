@@ -12,3 +12,7 @@ venv/
 
 # Alembic cache
 backend/alembic/versions/__pycache__/
+
+# ignorar archivos de node_modules
+backend/node_modules/
+

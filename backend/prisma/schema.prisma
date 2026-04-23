@@ -1,0 +1,113 @@
+// Prisma schema — Voz Ciudadana (NestJS stack)
+// Base de datos: PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum CitizenStatus {
+  PENDING      // Registro iniciado pero incompleto
+  ACTIVE       // Registro completo y verificado
+  BLOCKED      // Ciudadano bloqueado por moderación
+}
+
+enum ConversationStatus {
+  OPEN    // Conversación activa
+  CLOSED  // Conversación cerrada/resuelta
+}
+
+enum MessageDirection {
+  INBOUND   // Mensaje recibido del ciudadano
+  OUTBOUND  // Mensaje enviado al ciudadano
+}
+
+// ─── Tablas maestras ──────────────────────────────────────────────────────────
+
+/// Colonia / barrio al que pertenece un ciudadano
+model Colony {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  city      String    @default("Cintalapa de Figueroa")
+  state     String    @default("Chiapas")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  citizens  Citizen[]
+
+  @@index([name])
+  @@map("colonies")
+}
+
+/// Departamento/área de gobierno que atiende conversaciones
+model Department {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  conversations Conversation[]
+
+  @@map("departments")
+}
+
+// ─── Dominio core ─────────────────────────────────────────────────────────────
+
+/// Ciudadano registrado a través de WhatsApp
+model Citizen {
+  id        String        @id @default(uuid())
+  phone     String        @unique  // Número en formato E.164 (ej. +521234567890)
+  fullName  String?
+  colonyId  Int?
+  interests Json?         // Array de strings con temas de interés
+  status    CitizenStatus @default(PENDING)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  colony        Colony?        @relation(fields: [colonyId], references: [id])
+  conversations Conversation[]
+
+  @@index([phone])
+  @@index([status])
+  @@map("citizens")
+}
+
+/// Conversación vinculada a un ciudadano y opcionalmente a un departamento
+model Conversation {
+  id             String             @id @default(uuid())
+  citizenId      String
+  status         ConversationStatus @default(OPEN)
+  assignedDeptId Int?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  citizen        Citizen     @relation(fields: [citizenId], references: [id])
+  assignedDept   Department? @relation(fields: [assignedDeptId], references: [id])
+  messages       Message[]
+
+  @@index([citizenId])
+  @@index([status])
+  @@map("conversations")
+}
+
+/// Mensaje individual dentro de una conversación
+model Message {
+  id             String           @id @default(uuid())
+  conversationId String
+  direction      MessageDirection
+  body           String
+  waMessageId    String?          @unique  // ID del mensaje en la API de WhatsApp
+  createdAt      DateTime         @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+
+  @@index([conversationId])
+  @@index([waMessageId])
+  @@map("messages")
+}
