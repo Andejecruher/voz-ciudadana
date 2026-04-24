@@ -7,6 +7,7 @@ x-api-base: &api-base
   build:
     context: ./backend
     dockerfile: Dockerfile
+    target: runner        # default para el anchor; cada servicio puede sobreescribir
   restart: unless-stopped
 
 x-api-env: &api-env
@@ -20,6 +21,10 @@ services:
   # ── API Express (WhatsApp bot + Prisma) ────────────────────────────────────
   api:
     <<: *api-base
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: dev           # imagen con devDependencies + ts-node-dev
     profiles:
       - dev
     env_file:
