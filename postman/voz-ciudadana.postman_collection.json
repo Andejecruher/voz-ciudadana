@@ -1,0 +1,590 @@
+{
+  "info": {
+    "_postman_id": "7c3a9e21-f4b5-4d8a-bc12-3e9f0a1b2c3d",
+    "name": "Voz Ciudadana — Backend API",
+    "description": "Colección completa de la API REST del backend de Voz Ciudadana.\n\n**Flujo recomendado:**\n1. Ejecutar `POST /auth/login` → extrae `access_token`, `refresh_token` y `user_id` automáticamente.\n2. El resto de requests usan `Bearer {{access_token}}` heredado de la colección.\n3. El pre-request script de colección renueva el `access_token` automáticamente cuando expira (≤60s).\n\n**Roles disponibles:** `SUPERADMIN` · `COORDINADOR` · `OPERADOR_CHAT` · `ANALISTA`",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{access_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "id": "col-prerequest-autorefresh",
+        "type": "text/javascript",
+        "exec": [
+          "// ── Auto-refresh del access token ──────────────────────────────────",
+          "// Se ejecuta antes de CADA request de la colección.",
+          "// Si el token está a ≤60s de expirar, lo renueva transparentemente.",
+          "const accessToken = pm.environment.get('access_token');",
+          "const refreshToken = pm.environment.get('refresh_token');",
+          "",
+          "if (!accessToken || !refreshToken) { return; }",
+          "",
+          "let payload;",
+          "try {",
+          "  payload = JSON.parse(atob(accessToken.split('.')[1]));",
+          "} catch (e) { return; }",
+          "",
+          "const expiresAt = (payload.exp || 0) * 1000;",
+          "const bufferMs = 60 * 1000; // 60s de margen antes de expirar",
+          "",
+          "if (Date.now() + bufferMs < expiresAt) { return; }",
+          "",
+          "const baseUrl = pm.environment.get('base_url') || 'http://localhost:8000';",
+          "const deviceId = pm.environment.get('device_id') || 'postman-default';",
+          "",
+          "pm.sendRequest(",
+          "  {",
+          "    url: `${baseUrl}/api/v1/auth/refresh`,",
+          "    method: 'POST',",
+          "    header: [",
+          "      { key: 'Content-Type', value: 'application/json' },",
+          "      { key: 'x-device-id', value: deviceId }",
+          "    ],",
+          "    body: {",
+          "      mode: 'raw',",
+          "      raw: JSON.stringify({ refreshToken, deviceId })",
+          "    }",
+          "  },",
+          "  (err, res) => {",
+          "    if (err) { console.error('[Auto-Refresh] Error:', err); return; }",
+          "    if (res.code !== 200) { console.warn('[Auto-Refresh] Failed HTTP:', res.code); return; }",
+          "    const json = res.json();",
+          "    pm.environment.set('access_token', json.accessToken);",
+          "    pm.environment.set('refresh_token', json.refreshToken);",
+          "    console.log('[Auto-Refresh] Tokens renovados correctamente');",
+          "  }",
+          ");"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "01 · Health",
+      "item": [
+        {
+          "name": "GET /health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('status === ok', () => pm.expect(json.status).to.equal('ok'));",
+                  "pm.test('ts es una fecha ISO válida', () => pm.expect(new Date(json.ts).getTime()).to.be.above(0));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            },
+            "description": "Healthcheck público. No requiere autenticación. Responde `{ status: 'ok', ts: ISO_DATE }`."
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 · Auth",
+      "description": "Endpoints de autenticación del panel administrativo.\nBase: `/api/v1/auth`\n\n**Rate limits activos:**\n- `/auth/login`: 10 req / 15 min por IP + lockout progresivo por email (60s→300s→900s→3600s)\n- `/auth/refresh`: 60 req / 5 min por IP",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 — login exitoso', () => pm.response.to.have.status(200));",
+                  "",
+                  "const json = pm.response.json();",
+                  "",
+                  "pm.test('accessToken presente', () => pm.expect(json).to.have.property('accessToken'));",
+                  "pm.test('refreshToken presente', () => pm.expect(json).to.have.property('refreshToken'));",
+                  "pm.test('user presente', () => pm.expect(json).to.have.property('user'));",
+                  "pm.test('user.email es string', () => pm.expect(json.user?.email).to.be.a('string'));",
+                  "pm.test('user.roles es array no vacío', () => pm.expect(json.user?.roles).to.be.an('array').with.length.above(0));",
+                  "",
+                  "if (json.accessToken)  pm.environment.set('access_token',  json.accessToken);",
+                  "if (json.refreshToken) pm.environment.set('refresh_token', json.refreshToken);",
+                  "if (json.user?.id)     pm.environment.set('user_id',       json.user.id);",
+                  "",
+                  "console.log('[Login] Sesión iniciada:', json.user?.email, '| Roles:', json.user?.roles?.join(', '));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              {
+                "key": "x-device-id",
+                "value": "{{device_id}}",
+                "description": "Identificador del dispositivo para multi-sesión (máx. 5 sesiones/usuario)"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{superadmin_email}}\",\n  \"password\": \"{{superadmin_password}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "login"]
+            },
+            "description": "Autentica un usuario del panel admin.\n\nExtrae automáticamente `access_token`, `refresh_token` y `user_id` como variables de entorno."
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 — refresh exitoso', () => pm.response.to.have.status(200));",
+                  "",
+                  "const json = pm.response.json();",
+                  "",
+                  "pm.test('accessToken rotado', () => pm.expect(json).to.have.property('accessToken'));",
+                  "pm.test('refreshToken rotado', () => pm.expect(json).to.have.property('refreshToken'));",
+                  "",
+                  "if (json.accessToken)  pm.environment.set('access_token',  json.accessToken);",
+                  "if (json.refreshToken) pm.environment.set('refresh_token', json.refreshToken);",
+                  "",
+                  "console.log('[Refresh] Tokens rotados correctamente');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "x-device-id", "value": "{{device_id}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refresh_token}}\",\n  \"deviceId\": \"{{device_id}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "refresh"]
+            },
+            "description": "Rota el par access/refresh token. El token anterior es invalidado (single-use).\n\n**Rate limit:** 60 req / 5 min por IP."
+          }
+        },
+        {
+          "name": "Me (perfil propio)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('user existe', () => pm.expect(json).to.have.property('user'));",
+                  "pm.test('user.id es string', () => pm.expect(json.user?.id).to.be.a('string'));",
+                  "pm.test('user.email es string', () => pm.expect(json.user?.email).to.be.a('string'));",
+                  "pm.test('user.roles es array', () => pm.expect(json.user?.roles).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/me",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "me"]
+            },
+            "description": "Retorna el perfil del usuario autenticado (decoded del JWT).\n\n**Requiere:** `Authorization: Bearer {{access_token}}` (heredado de la colección)"
+          }
+        },
+        {
+          "name": "Logout (sesión actual)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('mensaje de confirmación', () => pm.expect(json.message).to.be.a('string'));",
+                  "",
+                  "// Limpiar tokens del entorno al hacer logout exitoso",
+                  "pm.environment.unset('access_token');",
+                  "pm.environment.unset('refresh_token');",
+                  "console.log('[Logout] Sesión cerrada. Tokens eliminados del entorno.');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refresh_token}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "logout"]
+            },
+            "description": "Cierra la sesión actual invalidando el refresh token provisto.\n\n**Requiere:** `Authorization: Bearer {{access_token}}`"
+          }
+        },
+        {
+          "name": "Logout (todas las sesiones)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('mensaje de confirmación', () => pm.expect(json.message).to.be.a('string'));",
+                  "",
+                  "pm.environment.unset('access_token');",
+                  "pm.environment.unset('refresh_token');",
+                  "console.log('[Logout All] Todas las sesiones cerradas.');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"logoutAll\": true\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "logout"]
+            },
+            "description": "Cierra TODAS las sesiones del usuario (todos los dispositivos).\n\n**Requiere:** `Authorization: Bearer {{access_token}}`"
+          }
+        },
+        {
+          "name": "Register Admin (SUPERADMIN only)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201 — usuario registrado', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test('user.id existe', () => pm.expect(json.user?.id).to.be.a('string'));",
+                  "pm.test('user.email existe', () => pm.expect(json.user?.email).to.be.a('string'));",
+                  "pm.test('user.roles es array', () => pm.expect(json.user?.roles).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"operador@vozcuidadana.ar\",\n  \"password\": \"Operador2026!\",\n  \"fullName\": \"Operador Chat Test\",\n  \"roles\": [\"OPERADOR_CHAT\"]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "register"]
+            },
+            "description": "Registra un nuevo usuario admin desde el panel de auth.\n\n**Requiere:** `Authorization: Bearer {{access_token}}` + rol `SUPERADMIN`\n\n**Roles disponibles:** `SUPERADMIN` · `COORDINADOR` · `OPERADOR_CHAT` · `ANALISTA`"
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 · Admin — Usuarios",
+      "description": "Gestión de usuarios del panel administrativo.\nBase: `/api/v1/admin`\n\n**Acceso restringido:** todos los endpoints requieren `Authorization: Bearer {{access_token}}` + rol `SUPERADMIN`.",
+      "item": [
+        {
+          "name": "Listar usuarios",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('users es array', () => pm.expect(json.users).to.be.an('array'));",
+                  "if (json.users.length > 0) {",
+                  "  pm.test('shape del usuario correcto', () => {",
+                  "    const u = json.users[0];",
+                  "    pm.expect(u).to.include.all.keys('id', 'email', 'fullName', 'isActive', 'createdAt', 'roles');",
+                  "    pm.expect(u.roles).to.be.an('array');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/admin/users",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "admin", "users"]
+            },
+            "description": "Retorna todos los usuarios admin con sus roles.\nOrdenados por `createdAt` DESC."
+          }
+        },
+        {
+          "name": "Crear usuario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201 — usuario creado', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test('user.id existe', () => pm.expect(json.user?.id).to.be.a('string'));",
+                  "pm.test('user.email correcto', () => pm.expect(json.user?.email).to.be.a('string'));",
+                  "pm.test('user.isActive = true', () => pm.expect(json.user?.isActive).to.equal(true));",
+                  "pm.test('user.roles es array', () => pm.expect(json.user?.roles).to.be.an('array'));",
+                  "",
+                  "if (json.user?.id) {",
+                  "  pm.environment.set('target_user_id', json.user.id);",
+                  "  console.log('[Admin] target_user_id guardado:', json.user.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"nuevo.operador@vozcuidadana.ar\",\n  \"password\": \"NuevoPass2026!\",\n  \"fullName\": \"Nuevo Operador\",\n  \"roles\": [\"OPERADOR_CHAT\"]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/admin/users",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "admin", "users"]
+            },
+            "description": "Crea un nuevo usuario admin.\n\nGuarda el `id` del usuario creado en `{{target_user_id}}` automáticamente para usar en PATCH/DELETE."
+          }
+        },
+        {
+          "name": "Actualizar usuario",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('user.id existe en respuesta', () => pm.expect(json.user?.id).to.be.a('string'));",
+                  "pm.test('user.isActive sigue activo', () => pm.expect(json.user?.isActive).to.equal(true));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fullName\": \"Nombre Actualizado\",\n  \"roles\": [\"ANALISTA\"]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/admin/users/{{target_user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "admin", "users", "{{target_user_id}}"]
+            },
+            "description": "Actualiza `fullName`, `roles` o `isActive` de un usuario.\n\nUsa `{{target_user_id}}` seteado por «Crear usuario».\n\n⚠️ Los `roles` son **reemplazados** (no mergeados) con el array provisto."
+          }
+        },
+        {
+          "name": "Desactivar usuario (soft delete)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('mensaje de confirmación', () => pm.expect(json.message).to.be.a('string'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/admin/users/{{target_user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "admin", "users", "{{target_user_id}}"]
+            },
+            "description": "Desactiva un usuario (`isActive = false`). No elimina el registro.\n\n⚠️ Un SUPERADMIN no puede desactivarse a sí mismo."
+          }
+        },
+        {
+          "name": "Configuración del sistema",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('features existe', () => pm.expect(json.features).to.be.an('object'));",
+                  "pm.test('rbacEnabled activo', () => pm.expect(json.features.rbacEnabled).to.equal(true));",
+                  "pm.test('auditLog activo', () => pm.expect(json.features.auditLog).to.equal(true));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/admin/config",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "admin", "config"]
+            },
+            "description": "Retorna la configuración activa del sistema (feature flags)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 · Webhook — WhatsApp",
+      "description": "Endpoints del webhook de WhatsApp Cloud API.\nBase: `/api/v1/webhook`\n\n⚠️ Estos endpoints son invocados por Meta/WhatsApp, no por el panel admin directamente.",
+      "item": [
+        {
+          "name": "Verificar webhook (Meta challenge)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Responde con el challenge en texto plano', () => {",
+                  "  pm.expect(pm.response.text()).to.equal('CHALLENGE_STRING');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/webhook?hub.mode=subscribe&hub.verify_token={{webhook_verify_token}}&hub.challenge=CHALLENGE_STRING",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "webhook"],
+              "query": [
+                { "key": "hub.mode", "value": "subscribe" },
+                {
+                  "key": "hub.verify_token",
+                  "value": "{{webhook_verify_token}}",
+                  "description": "Debe coincidir con WHATSAPP_VERIFY_TOKEN en el servidor"
+                },
+                {
+                  "key": "hub.challenge",
+                  "value": "CHALLENGE_STRING",
+                  "description": "Meta envía este valor; el server lo responde como texto plano con HTTP 200"
+                }
+              ]
+            },
+            "description": "Meta llama a este endpoint al configurar/reconfigurar el webhook.\n\n- `hub.mode` debe ser `subscribe`\n- `hub.verify_token` debe coincidir con `WHATSAPP_VERIFY_TOKEN` del servidor\n- El servidor responde con `hub.challenge` en texto plano"
+          }
+        },
+        {
+          "name": "Recibir mensaje (POST webhook)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 — Meta ACK', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('status === ok', () => pm.expect(json.status).to.equal('ok'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              {
+                "key": "x-hub-signature-256",
+                "value": "sha256={{whatsapp_hmac_signature}}",
+                "description": "HMAC-SHA256 del body crudo usando WHATSAPP_APP_SECRET. Generado por Meta en producción. Generar manualmente con backend/src/utils/hmac.util.ts para pruebas locales."
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"object\": \"whatsapp_business_account\",\n  \"entry\": [\n    {\n      \"id\": \"BUSINESS_ACCOUNT_ID\",\n      \"changes\": [\n        {\n          \"value\": {\n            \"messaging_product\": \"whatsapp\",\n            \"metadata\": {\n              \"display_phone_number\": \"1234567890\",\n              \"phone_number_id\": \"PHONE_NUMBER_ID\"\n            },\n            \"contacts\": [\n              {\n                \"profile\": { \"name\": \"Ciudadano Test\" },\n                \"wa_id\": \"5491112345678\"\n              }\n            ],\n            \"messages\": [\n              {\n                \"from\": \"5491112345678\",\n                \"id\": \"wamid.TEST_MESSAGE_ID\",\n                \"timestamp\": \"1714000000\",\n                \"text\": { \"body\": \"Hola, ¿cómo me registro para votar?\" },\n                \"type\": \"text\"\n              }\n            ]\n          },\n          \"field\": \"messages\"\n        }\n      ]\n    }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/webhook",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "webhook"]
+            },
+            "description": "Simula un mensaje entrante de WhatsApp.\n\n⚠️ **Firma HMAC requerida:** el header `x-hub-signature-256` debe ser el HMAC-SHA256 del body crudo usando `WHATSAPP_APP_SECRET`.\n\nUsá `backend/src/utils/hmac.util.ts` para generar la firma localmente."
+          }
+        }
+      ]
+    }
+  ]
+}
