@@ -1,25 +1,22 @@
-import type { Metadata } from 'next'
-import { Montserrat } from 'next/font/google'
-import './globals.css'
-
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? 'https://vozciudadana.mx'
-const OG_IMAGE_URL = `${BASE_URL}/images/og-image.png`
+import { buildOpenGraph, buildTwitter, siteConfig } from '@/lib/seo';
+import type { Metadata } from 'next';
+import { Montserrat } from 'next/font/google';
+import './globals.css';
 
 const montserrat = Montserrat({
   subsets: ['latin'],
   variable: '--font-montserrat',
   weight: ['400', '500', '600', '700', '800', '900'],
-})
+});
 
 export const metadata: Metadata = {
-  metadataBase: new URL(BASE_URL),
+  metadataBase: new URL(siteConfig.baseUrl),
 
   title: {
     template: '%s | Voz Ciudadana',
-    default: 'Voz Ciudadana — Cintalapa tiene voz de mujer',
+    default: siteConfig.defaultTitle,
   },
-  description:
-    'Candidata de Cintalapa de Figueroa, Chiapas. Agua, seguridad y campo próspero para cada familia. Nací aquí, crecí aquí y juntas haremos historia.',
+  description: siteConfig.defaultDescription,
   keywords: [
     'Voz Ciudadana',
     'Cintalapa de Figueroa',
@@ -30,9 +27,9 @@ export const metadata: Metadata = {
     'campaña política Chiapas',
     'presidenta municipal',
   ],
-  authors: [{ name: 'Voz Ciudadana', url: BASE_URL }],
-  creator: 'Voz Ciudadana',
-  publisher: 'Voz Ciudadana',
+  authors: [{ name: siteConfig.siteName, url: siteConfig.baseUrl }],
+  creator: siteConfig.siteName,
+  publisher: siteConfig.siteName,
 
   robots: {
     index: true,
@@ -40,42 +37,27 @@ export const metadata: Metadata = {
     googleBot: { index: true, follow: true },
   },
 
-  openGraph: {
-    type: 'website',
-    locale: 'es_MX',
-    url: BASE_URL,
-    siteName: 'Voz Ciudadana',
-    title: 'Voz Ciudadana — Cintalapa tiene voz de mujer',
-    description:
-      'Candidata de Cintalapa de Figueroa, Chiapas. Agua, seguridad y campo próspero para cada familia. Nací aquí, crecí aquí y juntas haremos historia.',
-    images: [
-      {
-        url: OG_IMAGE_URL,
-        width: 1200,
-        height: 630,
-        alt: 'Voz Ciudadana — Cintalapa de Figueroa, Chiapas',
-      },
-    ],
-  },
+  openGraph: buildOpenGraph({
+    title: siteConfig.defaultTitle,
+    description: siteConfig.defaultDescription,
+    path: '/',
+  }),
 
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Voz Ciudadana — Cintalapa tiene voz de mujer',
-    description:
-      'Candidata de Cintalapa de Figueroa, Chiapas. Agua, seguridad y campo próspero para cada familia.',
-    images: [OG_IMAGE_URL],
-  },
+  twitter: buildTwitter({
+    title: siteConfig.defaultTitle,
+    description: siteConfig.defaultDescription,
+  }),
 
   alternates: {
-    canonical: BASE_URL,
+    canonical: siteConfig.baseUrl,
   },
-}
+};
 
 const jsonLd = {
   '@context': 'https://schema.org',
   '@type': 'PoliticalParty',
   name: 'Voz Ciudadana',
-  url: BASE_URL,
+  url: siteConfig.baseUrl,
   description:
     'Plataforma de campaña política para la candidata a presidenta municipal de Cintalapa de Figueroa, Chiapas. Participación ciudadana, propuestas de gobierno y agenda comunitaria.',
   areaServed: {
@@ -83,12 +65,12 @@ const jsonLd = {
     name: 'Cintalapa de Figueroa, Chiapas, México',
   },
   sameAs: [],
-}
+};
 
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode
+  children: React.ReactNode;
 }>) {
   return (
     <html lang="es" className="bg-background" suppressHydrationWarning>
@@ -101,9 +83,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       </head>
-      <body className={`${montserrat.variable} font-sans antialiased`}>
-        {children}
-      </body>
+      <body className={`${montserrat.variable} font-sans antialiased`}>{children}</body>
     </html>
-  )
+  );
 }
