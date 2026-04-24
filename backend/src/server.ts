@@ -21,6 +21,7 @@ import swaggerUi from 'swagger-ui-express';
 
 import { env } from './config/env.config';
 import { createSwaggerSpec } from './config/swagger.config';
+import { AppError } from './utils/app-error';
 
 // Servicios de infraestructura
 import { PrismaService } from './services/prisma.service';
@@ -55,7 +56,7 @@ app.use(
   cors({
     origin: env.CORS_ORIGIN,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Hub-Signature-256'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Hub-Signature-256', 'X-Device-Id'],
   }),
 );
 
@@ -78,8 +79,9 @@ app.use(
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
 const swaggerSpec = createSwaggerSpec({ port }) as swaggerUi.JsonObject;
 
-app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-app.get('/docs.json', (_req: Request, res: Response) => {
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec)); // alias de compatibilidad
+app.get('/api-docs.json', (_req: Request, res: Response) => {
   res.setHeader('Content-Type', 'application/json');
   res.send(swaggerSpec);
 });
@@ -89,8 +91,18 @@ registerRoutes(app, { prisma, redis });
 
 // ── Manejo global de errores ──────────────────────────────────────────────────
 // El cuarto parámetro `_next` es obligatorio para que Express reconozca el handler de error
-app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-  console.error('[ErrorHandler]', err.message);
+app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  if (err instanceof AppError) {
+    res.status(err.statusCode).json({
+      error: err.message,
+      ...(err.code ? { code: err.code } : {}),
+    });
+    return;
+  }
+
+  // Error inesperado — loguear pero no exponer detalles
+  const message = err instanceof Error ? err.message : 'Unknown error';
+  console.error('[ErrorHandler]', message);
   res.status(500).json({ error: 'Internal server error' });
 });
 
@@ -100,7 +112,8 @@ async function start(): Promise<void> {
 
   const server = app.listen(port, () => {
     console.log(`🚀 Voz Ciudadana API corriendo en http://localhost:${port}`);
-    console.log(`📚 Documentación en http://localhost:${port}/docs`);
+    console.log(`📚 Documentación en http://localhost:${port}/api-docs`);
+    console.log(`📄 OpenAPI JSON en http://localhost:${port}/api-docs.json`);
   });
 
   // Shutdown limpio al recibir señales del sistema operativo
