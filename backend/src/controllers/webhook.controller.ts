@@ -12,16 +12,16 @@
  * metaSignature.middleware.ts ANTES de llegar a receiveWebhookMessage.
  */
 import { Request, Response } from 'express';
-import { getEnv } from '@/config/env.config';
-import { WhatsAppWebhookPayload } from '@/config/types';
-import { BotService } from '@/services/bot.service';
+import { env } from '../config/env.config';
+import { BotService } from '../services/bot.service';
+import { WhatsAppWebhookPayload } from '../types/types';
 
 export class WebhookController {
   /** Token de verificación configurado en el panel de Meta (env: WHATSAPP_VERIFY_TOKEN) */
   private readonly verifyToken: string;
 
   constructor(private readonly botService: BotService) {
-    this.verifyToken = getEnv('WHATSAPP_VERIFY_TOKEN');
+    this.verifyToken = env.WHATSAPP_VERIFY_TOKEN;
   }
 
   /**

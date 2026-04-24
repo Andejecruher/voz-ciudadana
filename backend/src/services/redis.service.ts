@@ -3,15 +3,16 @@
  * Expone la instancia raw para operaciones get/set/del con TTL.
  */
 import Redis from 'ioredis';
+import { env } from '../config/env.config';
 
 export class RedisService {
   readonly client: Redis;
 
   constructor() {
     this.client = new Redis({
-      host: process.env['REDIS_HOST'] ?? 'localhost',
-      port: parseInt(process.env['REDIS_PORT'] ?? '6379', 10),
-      password: process.env['REDIS_PASSWORD'] || undefined,
+      host: env.REDIS_HOST,
+      port: env.REDIS_PORT,
+      password: env.REDIS_PASSWORD,
       // Reconectar automáticamente en caso de corte
       retryStrategy: (times) => Math.min(times * 100, 3000),
     });

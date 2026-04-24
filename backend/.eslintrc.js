@@ -58,10 +58,10 @@ module.exports = {
     // ── Estilo ────────────────────────────────────────────────────────────────
 
     // Consistencia en uso de comillas (Prettier toma el control real, esto es safety net)
-    'quotes': ['warn', 'single', { avoidEscape: true }],
+    quotes: ['warn', 'single', { avoidEscape: true }],
 
     // Siempre usar punto y coma
-    'semi': ['warn', 'always'],
+    semi: ['warn', 'always'],
 
     // Nunca console.log en producción (excepto console.warn / console.error)
     // Nota: en dev queremos logs — desactivar si resulta muy ruidoso

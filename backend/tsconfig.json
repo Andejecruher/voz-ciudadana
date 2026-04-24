@@ -25,39 +25,6 @@
     "esModuleInterop": true, // Permite `import x from 'x'` para CJS modules
     "allowSyntheticDefaultImports": true, // Requiere esModuleInterop
     "resolveJsonModule": true, // Permite importar archivos .json
-    // ── Aliases de paths ──────────────────────────────────────────────────────
-    // Supuesto: tsconfig-paths o ts-node-dev con paths support se usa en dev.
-    // Para producción, usar tsc-alias o tsconfig-paths/register.
-    "baseUrl": "src",
-    "paths": {
-      "@/*": [
-        "./*"
-      ],
-      "@/config/*": [
-        "./config/*"
-      ],
-      "@/routes/*": [
-        "./routes/*"
-      ],
-      "@/controllers/*": [
-        "./controllers/*"
-      ],
-      "@/services/*": [
-        "./services/*"
-      ],
-      "@/middlewares/*": [
-        "./middlewares/*"
-      ],
-      "@/database/*": [
-        "./database/*"
-      ],
-      "@/utils/*": [
-        "./utils/*"
-      ],
-      "@/types": [
-        "./config/types"
-      ]
-    },
     // ── Output ────────────────────────────────────────────────────────────────
     "outDir": "./dist",
     "rootDir": "./src",
@@ -67,7 +34,7 @@
     "removeComments": false,
     // ── Misc ──────────────────────────────────────────────────────────────────
     "skipLibCheck": true, // Ignora errores en .d.ts de node_modules
-    "ignoreDeprecations": "6.0", // Silencia deprecations hasta TS 6.x
+    "ignoreDeprecations": "5.0", // Silencia deprecations hasta TS 5.x
     "forceConsistentCasingInFileNames": true
   },
   "include": [

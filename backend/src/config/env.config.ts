@@ -1,55 +1,54 @@
-/**
- * Carga variables de entorno desde .env usando dotenv.
- * Expone una función getEnv() para acceder de forma type-safe a las vars requeridas.
- */
-import * as dotenv from 'dotenv';
-dotenv.config();
+import { config } from 'dotenv';
+import { z } from 'zod';
 
-export interface AppEnv {
-  /** Puerto HTTP del servidor */
-  PORT: number;
-  /** Entorno de ejecución (development, production, etc.) */
-  NODE_ENV: string;
+config();
 
-  // ── WhatsApp Cloud API ────────────────────────────────────────────────────────
-  /** Token de verificación del webhook (lo define el operador) */
-  WHATSAPP_VERIFY_TOKEN: string;
-  /** App ID de Meta para validar firma HMAC X-Hub-Signature-256 */
-  WHATSAPP_APP_ID: string;
-  /** App Secret para validar firma HMAC X-Hub-Signature-256 */
-  WHATSAPP_APP_SECRET: string;
-  /** Access token del sistema para la Graph API de Meta */
-  WHATSAPP_ACCESS_TOKEN: string;
-  /** Phone Number ID de Meta para enviar mensajes */
-  WHATSAPP_PHONE_NUMBER_ID: string;
-  /** Whatsapp Bussines ID */
-  WHATSAPP_BUSINESS_ACCOUNT_ID: string;
+const requiredString = (name: string) =>
+  z
+    .string({ message: `${name} is required` })
+    .trim()
+    .min(1, `${name} cannot be empty`);
 
-  // ── Base de datos ─────────────────────────────────────────────────────────────
-  /** URL de conexión de Prisma (PostgreSQL) */
-  DATABASE_URL: string;
+const envSchema = z.object({
+  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  PORT: z.coerce.number().int().min(1).max(65535).default(8000),
+  CORS_ORIGIN: z.preprocess(
+    (value) => (typeof value === 'string' && value.trim().length === 0 ? undefined : value),
+    z.string().trim().default('*'),
+  ),
 
-  // ── Redis ─────────────────────────────────────────────────────────────────────
-  REDIS_HOST: string;
-  REDIS_PORT: number;
-  REDIS_PASSWORD?: string;
+  DATABASE_URL: requiredString('DATABASE_URL'),
+  REDIS_HOST: z.preprocess(
+    (value) => (typeof value === 'string' && value.trim().length === 0 ? undefined : value),
+    z.string().trim().default('localhost'),
+  ),
+  REDIS_PORT: z.coerce.number().int().min(1).max(65535).default(6379),
+  REDIS_PASSWORD: z.preprocess(
+    (value) => (typeof value === 'string' && value.trim().length === 0 ? undefined : value),
+    z.string().trim().optional(),
+  ),
+
+  JWT_SECRET: requiredString('JWT_SECRET'),
+  WHATSAPP_VERIFY_TOKEN: requiredString('WHATSAPP_VERIFY_TOKEN'),
+  WHATSAPP_APP_ID: requiredString('WHATSAPP_APP_ID'),
+  WHATSAPP_APP_SECRET: requiredString('WHATSAPP_APP_SECRET'),
+  WHATSAPP_ACCESS_TOKEN: requiredString('WHATSAPP_ACCESS_TOKEN'),
+  WHATSAPP_PHONE_NUMBER_ID: requiredString('WHATSAPP_PHONE_NUMBER_ID'),
+  WHATSAPP_BUSINESS_ACCOUNT_ID: requiredString('WHATSAPP_BUSINESS_ACCOUNT_ID'),
+});
+
+const parsedEnv = envSchema.safeParse(process.env);
+
+if (!parsedEnv.success) {
+  const issues = parsedEnv.error.issues
+    .map((issue) => {
+      const key = issue.path.join('.') || 'ENV';
+      return `- ${key}: ${issue.message}`;
+    })
+    .join('\n');
+
+  throw new Error(`Invalid environment configuration:\n${issues}`);
 }
 
-/**
- * Retorna el valor de una variable de entorno.
- * Lanza error si la variable no existe y es requerida.
- */
-export function getEnv(key: keyof AppEnv, required = true): string {
-  const value = process.env[key as string];
-  if (!value && required) {
-    throw new Error(`Missing required environment variable: ${key}`);
-  }
-  return value ?? '';
-}
-
-/**
- * Retorna el PORT configurado, con fallback a 8000.
- */
-export function getPort(): number {
-  return parseInt(process.env['PORT'] ?? '8000', 10);
-}
+export const env = parsedEnv.data;
+export type AppEnv = z.infer<typeof envSchema>;

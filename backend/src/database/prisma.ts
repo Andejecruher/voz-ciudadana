@@ -15,6 +15,7 @@
  * usar PrismaService en src/services/prisma.service.ts que extiende PrismaClient.
  */
 import { PrismaClient } from '@prisma/client';
+import { env } from '../config/env.config';
 
 /**
  * Extiende globalThis para cachear la instancia de Prisma en desarrollo.
@@ -29,7 +30,7 @@ const globalForPrisma = globalThis as unknown as {
  *
  * Uso:
  * ```ts
- * import { prismaClient } from '@/database/prisma';
+ * import { prismaClient } from '../database/prisma';
  * const citizens = await prismaClient.citizen.findMany();
  * ```
  *
@@ -40,12 +41,12 @@ export const prismaClient: PrismaClient =
   globalForPrisma.prisma ??
   new PrismaClient({
     log:
-      process.env['NODE_ENV'] === 'development'
+      env.NODE_ENV === 'development'
         ? ['query', 'error', 'warn']
         : ['error'],
   });
 
 // Cachear en global solo en desarrollo para hot-reload
-if (process.env['NODE_ENV'] !== 'production') {
+if (env.NODE_ENV !== 'production') {
   globalForPrisma.prisma = prismaClient;
 }

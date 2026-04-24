@@ -13,8 +13,8 @@
  * porque Meta solo firma los payloads de mensajes, no la verificación GET.
  */
 import { Router } from 'express';
-import { WebhookController } from '@/controllers/webhook.controller';
-import { metaSignatureMiddleware } from '@/middlewares/metaSignature.middleware';
+import { WebhookController } from '../controllers/webhook.controller';
+import { metaSignatureMiddleware } from '../middlewares/metaSignature.middleware';
 
 /**
  * Crea y retorna el router de webhook con sus dependencias inyectadas.

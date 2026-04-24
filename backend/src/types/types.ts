@@ -32,10 +32,10 @@ export interface BotSessionData {
  * Solo se mapean los campos necesarios — el resto se ignora defensivamente.
  */
 export interface WhatsAppTextMessage {
-  id: string;       // waMessageId
-  from: string;     // número del remitente en formato E.164 sin "+"
+  id: string; // waMessageId
+  from: string; // número del remitente en formato E.164 sin "+"
   timestamp: string;
-  type: string;     // 'text' | 'image' | 'audio' | etc.
+  type: string; // 'text' | 'image' | 'audio' | etc.
   text?: {
     body: string;
   };

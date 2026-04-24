@@ -20,13 +20,14 @@
  * Variables de entorno requeridas:
  *   JWT_SECRET — secreto para firmar/verificar JWTs (nunca en código fuente)
  */
-import { Request, Response, NextFunction } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import {
-  verify,
   JsonWebTokenError,
-  TokenExpiredError,
   JwtPayload as JwtLibPayload,
+  TokenExpiredError,
+  verify,
 } from 'jsonwebtoken';
+import { env } from '../config/env.config';
 
 /**
  * Payload esperado dentro del JWT.
@@ -72,13 +73,7 @@ export function jwtMiddleware(req: Request, res: Response, next: NextFunction): 
   }
 
   // ── 2. Obtener el secreto ─────────────────────────────────────────────────
-  const secret = process.env['JWT_SECRET'];
-
-  if (!secret) {
-    console.error('[JwtMiddleware] JWT_SECRET no configurado en variables de entorno');
-    res.status(500).json({ error: 'Internal server error' });
-    return;
-  }
+  const secret = env.JWT_SECRET;
 
   // ── 3. Verificar y decodificar ────────────────────────────────────────────
   try {

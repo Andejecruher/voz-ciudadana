@@ -20,11 +20,11 @@
  * Supuesto: La llamada real a la API de Meta para enviar mensajes
  * está marcada con TODO — requiere credenciales reales en .env.
  */
+import { ConversationStatus, LeadStatus, MessageDirection, SourceChannel } from '@prisma/client';
+import { WhatsAppTextMessage, WhatsAppWebhookPayload } from '../types/types';
+import { normalizePhone } from '../utils/hmac.util';
 import { PrismaService } from './prisma.service';
 import { RedisService } from './redis.service';
-import { WhatsAppWebhookPayload, WhatsAppTextMessage } from '../config/types';
-import { normalizePhone } from '../utils/hmac.util';
-import { ConversationStatus, LeadStatus, MessageDirection, SourceChannel } from '@prisma/client';
 
 // ─── Estados de la FSM ────────────────────────────────────────────────────────
 

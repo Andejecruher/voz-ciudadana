@@ -19,7 +19,7 @@
  */
 import { Request, Response, NextFunction } from 'express';
 import * as crypto from 'crypto';
-import { getEnv } from '@/config/env.config';
+import { env } from '../config/env.config';
 
 /** Extiende Request para incluir el rawBody capturado en server.ts */
 interface RequestWithRawBody extends Request {
@@ -55,7 +55,7 @@ export function metaSignatureMiddleware(
   }
 
   // ── 3. Calcular firma esperada ────────────────────────────────────────────
-  const appSecret = getEnv('WHATSAPP_APP_SECRET');
+  const appSecret = env.WHATSAPP_APP_SECRET;
 
   const expectedSignature =
     'sha256=' + crypto.createHmac('sha256', appSecret).update(req.rawBody).digest('hex');

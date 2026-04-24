@@ -35,6 +35,9 @@ importers:
       swagger-ui-express:
         specifier: ^5.0.0
         version: 5.0.1(express@4.22.1)
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
     devDependencies:
       '@types/cors':
         specifier: ^2.8.17
@@ -81,12 +84,6 @@ importers:
       ts-node-dev:
         specifier: ^2.0.0
         version: 2.0.0(@types/node@20.19.39)(typescript@5.9.3)
-      tsc-alias:
-        specifier: ^1.8.10
-        version: 1.8.16
-      tsconfig-paths:
-        specifier: ^4.2.0
-        version: 4.2.0
       typescript:
         specifier: ^5.1.0
         version: 5.9.3
@@ -730,9 +727,6 @@ packages:
     resolution: {integrity: sha512-VaUJspBffn/LMCJVoMvSAdmscJyS1auj5Zulnn5UoYcY531UWmdwhRWkcGKnGU93m5HSXP9LP2usOryrBtQowA==}
     engines: {node: '>=16'}
 
-  get-tsconfig@4.14.0:
-    resolution: {integrity: sha512-yTb+8DXzDREzgvYmh6s9vHsSVCHeC0G3PI5bEXNBHtmshPnO+S5O7qgLEOn0I5QvMy6kpZN8K1NKGyilLb93wA==}
-
   glob-parent@5.1.2:
     resolution: {integrity: sha512-AOIgSQCepiJYwP3ARnGx+5VnTu2HBYdzbGP45eLw1vr3zB3vZLeyed1sC9hnbcOc9/SrMyM5RPQrkGz4aS9Zow==}
     engines: {node: '>= 6'}
@@ -875,11 +869,6 @@ packages:
 
   json-stable-stringify-without-jsonify@1.0.1:
     resolution: {integrity: sha512-Bdboy+l7tA3OGW6FjyFHWkP5LuByj1Tk33Ljyq0axyzdk9//JSi2u3fP1QSmd1KNwq6VOKYGlAu87CisVir6Pw==}
-
-  json5@2.2.3:
-    resolution: {integrity: sha512-XmOWe7eyHYH14cLdVPoyg+GOH3rYX++KpzrylJwSW98t3Nk+U8XOl8FWKOgwtzdb8lXGf6zYwDUzeHMWfxasyg==}
-    engines: {node: '>=6'}
-    hasBin: true
 
   jsonwebtoken@9.0.3:
     resolution: {integrity: sha512-MT/xP0CrubFRNLNKvxJ2BYfy53Zkm++5bX9dtuPbqAeQpTVe0MQTFhao8+Cp//EmJp244xt6Drw/GVEGCUj40g==}
@@ -1031,10 +1020,6 @@ packages:
   ms@2.1.3:
     resolution: {integrity: sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==}
 
-  mylas@2.1.14:
-    resolution: {integrity: sha512-BzQguy9W9NJgoVn2mRWzbFrFWWztGCcng2QI9+41frfk+Athwgx3qhqhvStz7ExeUUu7Kzw427sNzHpEZNINog==}
-    engines: {node: '>=16.0.0'}
-
   natural-compare@1.4.0:
     resolution: {integrity: sha512-OWND8ei3VtNC9h7V60qff3SVobHr996CTwgxubgyQYEpg290h9J0buyECNNJexkFm5sOajh5G116RYA1c8ZMSw==}
 
@@ -1131,10 +1116,6 @@ packages:
     engines: {node: '>=0.10'}
     hasBin: true
 
-  plimit-lit@1.6.1:
-    resolution: {integrity: sha512-B7+VDyb8Tl6oMJT9oSO2CW8XC/T4UcJGrwOVoNGwOQsQYhlpfajmrMj5xeejqaASq3V/EqThyOeATEOMuSEXiA==}
-    engines: {node: '>=12'}
-
   prelude-ls@1.2.1:
     resolution: {integrity: sha512-vkcDPrRZo1QZLbn5RLGPpg/WmIQ65qoWWhcGKf/b5eplkkarX0m9z8ppCat4mlOqUsWpyNuYgO3VRyrYHSzX5g==}
     engines: {node: '>= 0.8.0'}
@@ -1160,10 +1141,6 @@ packages:
   qs@6.14.2:
     resolution: {integrity: sha512-V/yCWTTF7VJ9hIh18Ugr2zhJMP01MY7c5kh4J870L7imm6/DIzBsNLTXzMwUA3yZ5b/KBqLx8Kp3uRvd7xSe3Q==}
     engines: {node: '>=0.6'}
-
-  queue-lit@1.5.2:
-    resolution: {integrity: sha512-tLc36IOPeMAubu8BkW8YDBV+WyIgKlYU7zUNs0J5Vk9skSZ4JfGlPOqplP0aHdfv7HL0B2Pg6nwiq60Qc6M2Hw==}
-    engines: {node: '>=12'}
 
   queue-microtask@1.2.3:
     resolution: {integrity: sha512-NuaNSa6flKT5JaSYQzJok04JzTL1CA6aGhv5rfLW3PgqA+M2ChpZQnAC8h8i4ZFkBS8X5RqkDBHA7r4hej3K9A==}
@@ -1191,9 +1168,6 @@ packages:
   resolve-from@4.0.0:
     resolution: {integrity: sha512-pb/MYmXstAkysRFx8piNI1tGFNQIFA3vkE3Gq4EuA1dF6gHp/+vgZqsCGJapvy8N3Q+4o7FwvquPJcnZ7RYy4g==}
     engines: {node: '>=4'}
-
-  resolve-pkg-maps@1.0.0:
-    resolution: {integrity: sha512-seS2Tj26TBVOC2NIc2rOe2y2ZO7efxITtLZcGSOnHHNOQ7CkiUBfw0Iw2ck6xkIhPwLhKNLS8BO+hEpngQlqzw==}
 
   resolve@1.22.12:
     resolution: {integrity: sha512-TyeJ1zif53BPfHootBGwPRYT1RUt6oGWsaQr8UyZW/eAm9bKoijtvruSDEmZHm92CwS9nj7/fWttqPCgzep8CA==}
@@ -1404,15 +1378,6 @@ packages:
       '@swc/wasm':
         optional: true
 
-  tsc-alias@1.8.16:
-    resolution: {integrity: sha512-QjCyu55NFyRSBAl6+MTFwplpFcnm2Pq01rR/uxfqJoLMm6X3O14KEGtaSDZpJYaE1bJBGDjD0eSuiIWPe2T58g==}
-    engines: {node: '>=16.20.2'}
-    hasBin: true
-
-  tsconfig-paths@4.2.0:
-    resolution: {integrity: sha512-NoZ4roiN7LnbKn9QqE1amc9DJfzvZXxF4xDavcOWt1BPkdx+m+0gJuPM+S0vCe7zTJMYUP0R8pO2XMr+Y8oLIg==}
-    engines: {node: '>=6'}
-
   tsconfig@7.0.0:
     resolution: {integrity: sha512-vZXmzPrL+EmC4T/4rVlT2jNVMWCi/O4DIiSj3UHg1OE5kCKbk4mfrXc6dZksLgRM/TZlKnousKH9bbTazUWRRw==}
 
@@ -1499,6 +1464,9 @@ packages:
     resolution: {integrity: sha512-D7eujBWkLa3p2sIpJA0d1pr7es+a7m0vFAnZLlCEKq/Ij2k0MLi9Br2UPxoxdYystm5K1yeBGzub0FlYUEWj2Q==}
     engines: {node: '>=8.0.0'}
     hasBin: true
+
+  zod@4.3.6:
+    resolution: {integrity: sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg==}
 
 snapshots:
 
@@ -1936,7 +1904,8 @@ snapshots:
 
   commander@6.2.0: {}
 
-  commander@9.5.0: {}
+  commander@9.5.0:
+    optional: true
 
   concat-map@0.0.1: {}
 
@@ -2229,10 +2198,6 @@ snapshots:
 
   get-stream@8.0.1: {}
 
-  get-tsconfig@4.14.0:
-    dependencies:
-      resolve-pkg-maps: 1.0.0
-
   glob-parent@5.1.2:
     dependencies:
       is-glob: 4.0.3
@@ -2371,8 +2336,6 @@ snapshots:
   json-schema-traverse@0.4.1: {}
 
   json-stable-stringify-without-jsonify@1.0.1: {}
-
-  json5@2.2.3: {}
 
   jsonwebtoken@9.0.3:
     dependencies:
@@ -2518,8 +2481,6 @@ snapshots:
 
   ms@2.1.3: {}
 
-  mylas@2.1.14: {}
-
   natural-compare@1.4.0: {}
 
   negotiator@0.6.3: {}
@@ -2593,10 +2554,6 @@ snapshots:
 
   pidtree@0.6.0: {}
 
-  plimit-lit@1.6.1:
-    dependencies:
-      queue-lit: 1.5.2
-
   prelude-ls@1.2.1: {}
 
   prettier@3.8.3: {}
@@ -2617,8 +2574,6 @@ snapshots:
   qs@6.14.2:
     dependencies:
       side-channel: 1.1.0
-
-  queue-lit@1.5.2: {}
 
   queue-microtask@1.2.3: {}
 
@@ -2642,8 +2597,6 @@ snapshots:
       redis-errors: 1.2.0
 
   resolve-from@4.0.0: {}
-
-  resolve-pkg-maps@1.0.0: {}
 
   resolve@1.22.12:
     dependencies:
@@ -2873,22 +2826,6 @@ snapshots:
       v8-compile-cache-lib: 3.0.1
       yn: 3.1.1
 
-  tsc-alias@1.8.16:
-    dependencies:
-      chokidar: 3.6.0
-      commander: 9.5.0
-      get-tsconfig: 4.14.0
-      globby: 11.1.0
-      mylas: 2.1.14
-      normalize-path: 3.0.0
-      plimit-lit: 1.6.1
-
-  tsconfig-paths@4.2.0:
-    dependencies:
-      json5: 2.2.3
-      minimist: 1.2.8
-      strip-bom: 3.0.0
-
   tsconfig@7.0.0:
     dependencies:
       '@types/strip-bom': 3.0.0
@@ -2956,3 +2893,5 @@ snapshots:
       validator: 13.15.35
     optionalDependencies:
       commander: 9.5.0
+
+  zod@4.3.6: {}
