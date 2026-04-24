@@ -5,11 +5,11 @@
  */
 import { NextFunction, Request, Response } from 'express';
 import { z, ZodError } from 'zod';
+import type { AuditService } from '../services/audit.service';
+import type { PrismaService } from '../services/prisma.service';
+import type { PanelRole } from '../types/auth.types';
 import { AppError } from '../utils/app-error';
 import { hashPassword } from '../utils/password.util';
-import type { PrismaService } from '../services/prisma.service';
-import type { AuditService } from '../services/audit.service';
-import type { PanelRole } from '../types/auth.types';
 
 // ── Schemas ───────────────────────────────────────────────────────────────────
 

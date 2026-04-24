@@ -14,8 +14,11 @@
  * - logoutAll invalida todas las sesiones del usuario.
  */
 import { z } from 'zod';
+import { env } from '../config/env.config';
+import type { AuthenticatedUser, PanelRole } from '../types/auth.types';
 import { AppError } from '../utils/app-error';
 import { comparePassword, hashPassword } from '../utils/password.util';
+import { logSecurityEvent } from '../utils/security-logger';
 import {
   hashToken,
   parseExpiresInSeconds,
@@ -23,12 +26,9 @@ import {
   signRefreshToken,
   verifyRefreshToken,
 } from '../utils/token.util';
-import type { AuthenticatedUser, PanelRole } from '../types/auth.types';
-import { env } from '../config/env.config';
-import { logSecurityEvent } from '../utils/security-logger';
+import type { LockoutService } from './lockout.service';
 import type { PrismaService } from './prisma.service';
 import type { RedisService } from './redis.service';
-import type { LockoutService } from './lockout.service';
 
 // ── Esquemas de validación ────────────────────────────────────────────────────
 
@@ -72,9 +72,7 @@ const sessionKey = (userId: string, deviceId: string, jti: string): string =>
 const sessionsSetKey = (userId: string): string => `auth:sessions:${userId}`;
 
 /** Normaliza roles del usuario a PanelRole[] */
-function extractRoles(
-  userRoles: Array<{ role: { name: string } }>,
-): PanelRole[] {
+function extractRoles(userRoles: Array<{ role: { name: string } }>): PanelRole[] {
   return userRoles.map((ur) => ur.role.name as PanelRole);
 }
 
@@ -166,7 +164,7 @@ export class AuthService {
     const userId = payload.sub ?? '';
     const jti = payload.jti ?? '';
     // El deviceId del payload tiene prioridad — si se proveyó en el request se usa como fallback
-    const tokenDeviceId = payload.deviceId ?? deviceId;
+    const tokenDeviceId = (payload.deviceId as string) ?? deviceId;
 
     // 2. Validar hash en Redis
     const key = sessionKey(userId, tokenDeviceId, jti);
@@ -280,7 +278,7 @@ export class AuthService {
     }
 
     const jti = payload.jti ?? '';
-    const deviceId = payload.deviceId ?? 'unknown';
+    const deviceId = (payload.deviceId as string) ?? 'unknown';
     const key = sessionKey(userId, deviceId, jti);
 
     await this.redis.del(key);

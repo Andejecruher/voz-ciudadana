@@ -10,9 +10,9 @@
 import crypto from 'crypto';
 import { NextFunction, Request, Response } from 'express';
 import { ZodError } from 'zod';
-import { LoginSchema, RegisterAdminSchema, type AuthService } from '../services/auth.service';
 import type { AuditService } from '../services/audit.service';
 import { extractIp, extractUserAgent } from '../services/audit.service';
+import { LoginSchema, RegisterAdminSchema, type AuthService } from '../services/auth.service';
 import { AppError } from '../utils/app-error';
 
 export class AuthController {

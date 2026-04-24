@@ -41,9 +41,21 @@ const app = express();
 /**
  * helmet: establece headers de seguridad HTTP seguros por defecto.
  * Protege contra clickjacking, sniffing, XSS y otros ataques comunes.
+ *
+ * NOTA: Swagger UI (swagger-ui-express 5.x) requiere scripts/estilos inline y
+ * carga assets desde CDN (unpkg.com). La CSP por defecto de helmet 7 los bloquea.
+ * Se deshabilita contentSecurityPolicy únicamente para las rutas de docs.
+ * El resto de la app mantiene la CSP estricta de helmet.
  */
 // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-app.use(helmet());
+app.use(
+  /^\/(api-docs|docs)(\/|$)/,
+  helmet({
+    contentSecurityPolicy: false,
+  }),
+);
+// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+app.use(/^(?!\/(api-docs|docs))/, helmet());
 
 /**
  * cors: permite peticiones cross-origin.
@@ -75,12 +87,24 @@ app.use(
 );
 
 // ── Swagger / OpenAPI ─────────────────────────────────────────────────────────
-// swagger-jsdoc expone types CJS con `any` en runtime; se castea al formato esperado por swagger-ui.
-// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
-const swaggerSpec = createSwaggerSpec({ port }) as swaggerUi.JsonObject;
+// La spec es un objeto OpenAPIV3.Document; swagger-ui-express acepta JsonObject.
+const swaggerSpec = createSwaggerSpec({ port }) as unknown as swaggerUi.JsonObject;
 
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec)); // alias de compatibilidad
+const swaggerUiOptions: swaggerUi.SwaggerUiOptions = {
+  // Habilitar "Try it out" por defecto en todos los endpoints
+  swaggerOptions: {
+    tryItOutEnabled: true,
+    persistAuthorization: true,
+    displayRequestDuration: true,
+    filter: true,
+    docExpansion: 'list',
+  },
+  // Customizar el título de la UI
+  customSiteTitle: 'Voz Ciudadana API — Docs',
+};
+
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, swaggerUiOptions));
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, swaggerUiOptions)); // alias de compatibilidad
 app.get('/api-docs.json', (_req: Request, res: Response) => {
   res.setHeader('Content-Type', 'application/json');
   res.send(swaggerSpec);
