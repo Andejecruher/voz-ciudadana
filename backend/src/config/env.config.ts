@@ -18,15 +18,7 @@ const envSchema = z.object({
   ),
 
   DATABASE_URL: requiredString('DATABASE_URL'),
-  REDIS_HOST: z.preprocess(
-    (value) => (typeof value === 'string' && value.trim().length === 0 ? undefined : value),
-    z.string().trim().default('localhost'),
-  ),
-  REDIS_PORT: z.coerce.number().int().min(1).max(65535).default(6379),
-  REDIS_PASSWORD: z.preprocess(
-    (value) => (typeof value === 'string' && value.trim().length === 0 ? undefined : value),
-    z.string().trim().optional(),
-  ),
+  REDIS_URL: requiredString('REDIS_URL'),
 
   JWT_SECRET: requiredString('JWT_SECRET'),
   JWT_REFRESH_SECRET: z

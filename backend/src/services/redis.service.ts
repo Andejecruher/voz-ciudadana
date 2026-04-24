@@ -11,14 +11,7 @@ export class RedisService {
   readonly client: Redis;
 
   constructor() {
-    this.client = new Redis({
-      host: env.REDIS_HOST,
-      port: env.REDIS_PORT,
-      username: 'default',
-      password: env.REDIS_PASSWORD,
-      // Reconectar automáticamente en caso de corte
-      retryStrategy: (times) => Math.min(times * 100, 3000),
-    });
+    this.client = new Redis(env.REDIS_URL);
 
     this.client.on('connect', () => console.log('[RedisService] Conectado a Redis'));
     this.client.on('error', (err) => console.error('[RedisService] Error de Redis:', err));
