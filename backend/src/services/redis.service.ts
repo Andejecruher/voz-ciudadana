@@ -14,6 +14,7 @@ export class RedisService {
     this.client = new Redis({
       host: env.REDIS_HOST,
       port: env.REDIS_PORT,
+      username: 'default',
       password: env.REDIS_PASSWORD,
       // Reconectar automáticamente en caso de corte
       retryStrategy: (times) => Math.min(times * 100, 3000),
