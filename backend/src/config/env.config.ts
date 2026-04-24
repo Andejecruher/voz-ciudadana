@@ -8,16 +8,22 @@ dotenv.config();
 export interface AppEnv {
   /** Puerto HTTP del servidor */
   PORT: number;
+  /** Entorno de ejecución (development, production, etc.) */
+  NODE_ENV: string;
 
   // ── WhatsApp Cloud API ────────────────────────────────────────────────────────
   /** Token de verificación del webhook (lo define el operador) */
-  WA_VERIFY_TOKEN: string;
+  WHATSAPP_VERIFY_TOKEN: string;
+  /** App ID de Meta para validar firma HMAC X-Hub-Signature-256 */
+  WHATSAPP_APP_ID: string;
   /** App Secret para validar firma HMAC X-Hub-Signature-256 */
-  WA_APP_SECRET: string;
-  /** Phone Number ID de Meta para enviar mensajes */
-  WA_PHONE_NUMBER_ID: string;
+  WHATSAPP_APP_SECRET: string;
   /** Access token del sistema para la Graph API de Meta */
-  WA_ACCESS_TOKEN: string;
+  WHATSAPP_ACCESS_TOKEN: string;
+  /** Phone Number ID de Meta para enviar mensajes */
+  WHATSAPP_PHONE_NUMBER_ID: string;
+  /** Whatsapp Bussines ID */
+  WHATSAPP_BUSINESS_ACCOUNT_ID: string;
 
   // ── Base de datos ─────────────────────────────────────────────────────────────
   /** URL de conexión de Prisma (PostgreSQL) */
@@ -42,8 +48,8 @@ export function getEnv(key: keyof AppEnv, required = true): string {
 }
 
 /**
- * Retorna el PORT configurado, con fallback a 3000.
+ * Retorna el PORT configurado, con fallback a 8000.
  */
 export function getPort(): number {
-  return parseInt(process.env['PORT'] ?? '3000', 10);
+  return parseInt(process.env['PORT'] ?? '8000', 10);
 }

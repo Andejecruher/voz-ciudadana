@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Ejecutar lint-staged en el pre-commit hook
+# lint-staged usa la configuración de package.json (clave "lint-staged")
+# Solo procesa los archivos en stage (git add), no todo el proyecto
+npx lint-staged

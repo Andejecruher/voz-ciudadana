@@ -1,5 +1,8 @@
-// Prisma schema — Voz Ciudadana (NestJS stack)
+// Prisma schema — Voz Ciudadana
 // Base de datos: PostgreSQL
+// Nota: Cintalapa de Figueroa es el municipio objetivo del proyecto.
+// El modelo Colony tiene un campo `slug` único para seedear colonias
+// sin duplicados (ej: "centro", "nuevo_milenio", etc.)
 
 generator client {
   provider = "prisma-client-js"
@@ -30,10 +33,19 @@ enum MessageDirection {
 
 // ─── Tablas maestras ──────────────────────────────────────────────────────────
 
-/// Colonia / barrio al que pertenece un ciudadano
+/// Colonia / barrio al que pertenece un ciudadano.
+/// El campo `slug` permite seedear sin duplicados y referenciar colonias
+/// de forma programática (ej: "centro", "nuevo_milenio_cintalapa").
+/// El valor por defecto de `city` es Cintalapa de Figueroa ya que es el
+/// municipio objetivo del proyecto.
 model Colony {
   id        Int       @id @default(autoincrement())
+  /// Nombre legible de la colonia (ej: "Centro", "Nuevo Milenio")
   name      String    @unique
+  /// Slug único y estable para seedear/referenciar sin duplicados
+  /// Formato: snake_case, sin acentos, único por municipio
+  /// Ejemplo: "centro", "nuevo_milenio", "las_palmas"
+  slug      String    @unique
   city      String    @default("Cintalapa de Figueroa")
   state     String    @default("Chiapas")
   createdAt DateTime  @default(now())
@@ -42,6 +54,7 @@ model Colony {
   citizens  Citizen[]
 
   @@index([name])
+  @@index([slug])
   @@map("colonies")
 }
 

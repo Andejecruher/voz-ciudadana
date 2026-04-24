@@ -1,20 +1,81 @@
 {
   "compilerOptions": {
+    // ── Target y módulos ──────────────────────────────────────────────────────
     "module": "commonjs",
-    "declaration": true,
-    "removeComments": true,
-    "allowSyntheticDefaultImports": true,
     "target": "ES2021",
-    "sourceMap": true,
+    "lib": [
+      "ES2021"
+    ],
+    // ── Modo strict completo ──────────────────────────────────────────────────
+    "strict": true, // Activa todos los chequeos strict
+    "strictNullChecks": true, // null/undefined no asignables sin indicarlo
+    "strictFunctionTypes": true, // Chequeo covariante de tipos de función
+    "strictBindCallApply": true, // Tipado de bind/call/apply
+    "strictPropertyInitialization": true, // Props de clase deben inicializarse
+    "noImplicitAny": true, // Prohíbe `any` implícito
+    "noImplicitThis": true, // Prohíbe `this` implícito de tipo `any`
+    "alwaysStrict": true, // Emite "use strict" en todos los archivos
+    // ── Chequeos adicionales ──────────────────────────────────────────────────
+    "noUnusedLocals": true, // Error en variables locales no usadas
+    "noUnusedParameters": true, // Error en parámetros no usados
+    "noImplicitReturns": true, // Todas las rutas de una función deben retornar
+    "noFallthroughCasesInSwitch": true, // Evita fall-through en switch sin break
+    "exactOptionalPropertyTypes": false, // Desactivado — demasiado estricto para DTOs
+    // ── Interop ───────────────────────────────────────────────────────────────
+    "esModuleInterop": true, // Permite `import x from 'x'` para CJS modules
+    "allowSyntheticDefaultImports": true, // Requiere esModuleInterop
+    "resolveJsonModule": true, // Permite importar archivos .json
+    // ── Aliases de paths ──────────────────────────────────────────────────────
+    // Supuesto: tsconfig-paths o ts-node-dev con paths support se usa en dev.
+    // Para producción, usar tsc-alias o tsconfig-paths/register.
+    "baseUrl": "src",
+    "paths": {
+      "@/*": [
+        "./*"
+      ],
+      "@/config/*": [
+        "./config/*"
+      ],
+      "@/routes/*": [
+        "./routes/*"
+      ],
+      "@/controllers/*": [
+        "./controllers/*"
+      ],
+      "@/services/*": [
+        "./services/*"
+      ],
+      "@/middlewares/*": [
+        "./middlewares/*"
+      ],
+      "@/database/*": [
+        "./database/*"
+      ],
+      "@/utils/*": [
+        "./utils/*"
+      ],
+      "@/types": [
+        "./config/types"
+      ]
+    },
+    // ── Output ────────────────────────────────────────────────────────────────
     "outDir": "./dist",
-    "baseUrl": "./",
-    "skipLibCheck": true,
-    "strictNullChecks": true,
-    "noImplicitAny": true,
-    "strictBindCallApply": true,
-    "forceConsistentCasingInFileNames": true,
-    "noFallthroughCasesInSwitch": true
+    "rootDir": "./src",
+    "sourceMap": true,
+    "declaration": true,
+    "declarationMap": true,
+    "removeComments": false,
+    // ── Misc ──────────────────────────────────────────────────────────────────
+    "skipLibCheck": true, // Ignora errores en .d.ts de node_modules
+    "ignoreDeprecations": "6.0", // Silencia deprecations hasta TS 6.x
+    "forceConsistentCasingInFileNames": true
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"]
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "prisma/seed/**/*"
+  ]
 }

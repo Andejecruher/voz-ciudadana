@@ -3,7 +3,6 @@
  * Expone la instancia raw para operaciones get/set/del con TTL.
  */
 import Redis from 'ioredis';
-import { getEnv } from '../config/env.config';
 
 export class RedisService {
   readonly client: Redis;

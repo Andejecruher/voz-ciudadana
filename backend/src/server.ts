@@ -1,35 +1,77 @@
 /**
- * Entry point de la aplicación Express.
+ * Entry point de la aplicación Express — Voz Ciudadana API.
  *
  * Responsabilidades:
- * - Cargar variables de entorno
+ * - Cargar variables de entorno (dotenv)
  * - Instanciar servicios de infraestructura (Prisma, Redis)
- * - Montar middlewares (JSON con rawBody, Swagger)
- * - Registrar rutas
+ * - Montar middlewares globales (JSON con rawBody, cors, helmet, swagger)
+ * - Registrar rutas (webhook, healthcheck)
  * - Escuchar en el puerto configurado
  * - Manejar señales del proceso (SIGTERM, SIGINT) para shutdown limpio
+ *
+ * Supuestos:
+ * - cors y helmet se agregan como dependencias en package.json
+ * - jsonwebtoken se agrega para el jwt.middleware
+ * - Los aliases de path (@/) requieren tsconfig-paths en ts-node-dev
  */
-import './config/env.config'; // Asegura dotenv.config() al inicio
-import express, { Request, Response, NextFunction } from 'express';
+import express, { NextFunction, Request, Response } from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
 import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
 
+// Cargar .env antes de cualquier import que lea process.env
+import './config/env.config';
 import { getPort } from './config/env.config';
+
+// Servicios de infraestructura
 import { PrismaService } from './services/prisma.service';
 import { RedisService } from './services/redis.service';
-import { createAppRouter } from './router/app.router';
+
+// Capa de servicios de dominio
+import { BotService } from './services/bot.service';
+
+// Controllers
+import { WebhookController } from './controllers/webhook.controller';
+
+// Rutas
+import { createWebhookRouter } from './routes/webhook.routes';
 
 // ── Instancias de infraestructura ────────────────────────────────────────────
 const prisma = new PrismaService();
 const redis = new RedisService();
+const port = getPort();
 
 // ── Aplicación Express ────────────────────────────────────────────────────────
 const app = express();
 
 /**
- * Middleware para capturar el rawBody antes del parsing JSON.
- * Meta firma el payload con HMAC-SHA256 sobre el body crudo —
- * necesitamos el Buffer original para validar la firma.
+ * helmet: establece headers de seguridad HTTP seguros por defecto.
+ * Protege contra clickjacking, sniffing, XSS y otros ataques comunes.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+app.use(helmet());
+
+/**
+ * cors: permite peticiones cross-origin.
+ * En producción, restringir origin al dominio del frontend.
+ * Supuesto: En desarrollo se permite todo; en prod configurar via CORS_ORIGIN env.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+app.use(
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+  cors({
+    origin: process.env['CORS_ORIGIN'] ?? '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Hub-Signature-256'],
+  }),
+);
+
+/**
+ * express.json con opción `verify` para capturar el rawBody.
+ * Meta firma los payloads del webhook con HMAC-SHA256 sobre el body crudo —
+ * necesitamos el Buffer original ANTES del parsing para validar la firma.
+ * El rawBody se inyecta en req para uso del metaSignature.middleware.ts
  */
 app.use(
   express.json({
@@ -48,13 +90,9 @@ const swaggerOptions: swaggerJsdoc.Options = {
       version: '0.1.0',
       description:
         'API del backend de Voz Ciudadana — webhook WhatsApp + bot FSM de registro ciudadano.',
-      contact: {
-        name: 'Equipo Voz Ciudadana',
-      },
+      contact: { name: 'Equipo Voz Ciudadana' },
     },
-    servers: [
-      { url: 'http://localhost:3000', description: 'Desarrollo local' },
-    ],
+    servers: [{ url: `http://localhost:${port}`, description: 'Desarrollo local' }],
     components: {
       securitySchemes: {
         hubSignature: {
@@ -63,42 +101,69 @@ const swaggerOptions: swaggerJsdoc.Options = {
           name: 'X-Hub-Signature-256',
           description: 'Firma HMAC-SHA256 generada por Meta sobre el raw body',
         },
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+        },
       },
     },
     tags: [
-      {
-        name: 'Webhook',
-        description: 'Endpoints del webhook de WhatsApp Cloud API',
-      },
+      { name: 'Webhook', description: 'Endpoints del webhook de WhatsApp Cloud API' },
+      { name: 'Health', description: 'Estado de la aplicación' },
     ],
   },
-  // Lee anotaciones JSDoc de los controllers
-  apis: ['./src/controller/*.ts', './dist/controller/*.js'],
+  // Lee anotaciones JSDoc de controllers (tanto src como dist compilado)
+  apis: ['./src/controllers/*.ts', './dist/controllers/*.js'],
 };
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
-// Documentación UI en /docs
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-
-// Especificación JSON en /docs.json
 app.get('/docs.json', (_req: Request, res: Response) => {
   res.setHeader('Content-Type', 'application/json');
   res.send(swaggerSpec);
 });
 
-// ── Rutas de la aplicación ────────────────────────────────────────────────────
-const appRouter = createAppRouter({ prisma, redis });
-app.use('/', appRouter);
+// ── Composición manual de dependencias ────────────────────────────────────────
+// Wiring: PrismaService + RedisService → BotService → WebhookController → Router
+const botService = new BotService(prisma, redis);
+const webhookController = new WebhookController(botService);
 
-// ── Health check mínimo ───────────────────────────────────────────────────────
+// ── Rutas ─────────────────────────────────────────────────────────────────────
+const webhookRouter = createWebhookRouter(webhookController);
+app.use('/api/v1/webhook', webhookRouter);
+
+// ── Health check ──────────────────────────────────────────────────────────────
+/**
+ * @openapi
+ * /health:
+ *   get:
+ *     summary: Estado de la aplicación
+ *     tags: [Health]
+ *     responses:
+ *       200:
+ *         description: Aplicación funcionando correctamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: ok
+ *                 ts:
+ *                   type: string
+ *                   format: date-time
+ */
 app.get('/health', (_req: Request, res: Response) => {
   res.json({ status: 'ok', ts: new Date().toISOString() });
 });
 
 // ── Manejo global de errores ──────────────────────────────────────────────────
+// El cuarto parámetro `_next` es obligatorio para que Express reconozca el handler de error
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-  console.error('[ErrorHandler]', err);
+  console.error('[ErrorHandler]', err.message);
   res.status(500).json({ error: 'Internal server error' });
 });
 
@@ -106,21 +171,27 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 async function start(): Promise<void> {
   await prisma.connect();
 
-  const port = getPort();
   const server = app.listen(port, () => {
     console.log(`🚀 Voz Ciudadana API corriendo en http://localhost:${port}`);
     console.log(`📚 Documentación en http://localhost:${port}/docs`);
   });
 
-  // ── Shutdown limpio en señales del proceso ────────────────────────────────
-  const shutdown = async (signal: string): Promise<void> => {
-    console.log(`\n[Shutdown] Señal recibida: ${signal}. Cerrando servidor...`);
+  // Shutdown limpio al recibir señales del sistema operativo
+  const shutdown = (signal: string): void => {
+    console.log(`\n[Shutdown] Señal ${signal} recibida. Cerrando servidor...`);
 
-    server.close(async () => {
-      await prisma.disconnect();
-      await redis.disconnect();
-      console.log('[Shutdown] Servidor cerrado limpiamente.');
-      process.exit(0);
+    server.close(() => {
+      prisma
+        .disconnect()
+        .then(() => redis.disconnect())
+        .then(() => {
+          console.log('[Shutdown] Servidor cerrado limpiamente.');
+          process.exit(0);
+        })
+        .catch((err: unknown) => {
+          console.error('[Shutdown] Error durante el cierre:', err);
+          process.exit(1);
+        });
     });
   };
 
@@ -128,7 +199,7 @@ async function start(): Promise<void> {
   process.on('SIGINT', () => shutdown('SIGINT'));
 }
 
-start().catch((err) => {
-  console.error('[Bootstrap] Error fatal al iniciar la aplicación:', err);
+start().catch((err: unknown) => {
+  console.error('[Bootstrap] Error fatal al iniciar:', err);
   process.exit(1);
 });

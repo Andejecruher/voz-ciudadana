@@ -1,38 +1,57 @@
-version: "3.9"
+# ─────────────────────────────────────────────────────────────────────────────
+# VozCiudadana — docker-compose para dev/prod (profiles)
+# Stack: Express + Prisma + PostgreSQL + Redis
+# ─────────────────────────────────────────────────────────────────────────────
 
-# ─────────────────────────────────────────────────────────────────────────────
-# VozCiudadana — docker-compose para desarrollo local
-# Stack: NestJS + Prisma + PostgreSQL + Redis
-# ─────────────────────────────────────────────────────────────────────────────
+x-api-base: &api-base
+  build:
+    context: ./backend
+    dockerfile: Dockerfile
+  restart: unless-stopped
+
+x-api-env: &api-env
+  DATABASE_URL: ${DATABASE_URL:-postgresql://voz:secret@postgres:5432/vozcuidadana}
+  REDIS_HOST: ${REDIS_HOST:-redis}
+  REDIS_PORT: ${REDIS_PORT:-6379}
+  PORT: ${PORT:-8000}
 
 services:
 
-  # ── API NestJS (WhatsApp bot + Prisma) ─────────────────────────────────────
+  # ── API Express (WhatsApp bot + Prisma) ────────────────────────────────────
   api:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: voz_api
-    restart: unless-stopped
+    <<: *api-base
+    profiles:
+      - dev
     env_file:
       - ./backend/.env
     environment:
-      DATABASE_URL: postgresql://voz:secret@postgres:5432/vozcuidadana
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      PORT: 3000
+      <<: *api-env
     ports:
-      - "3000:3000"
+      - "${API_PORT:-8000}:8000"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
 
+  # ── API (prod) — usa variables de entorno externas ─────────────────────────
+  api-prod:
+    <<: *api-base
+    profiles:
+      - prod
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_HOST: ${REDIS_HOST}
+      REDIS_PORT: ${REDIS_PORT}
+      PORT: ${PORT:-8000}
+    ports:
+      - "${API_PORT:-8000}:8000"
+
   # ── PostgreSQL ───────────────────────────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
-    container_name: voz_postgres
+    profiles:
+      - dev
     restart: unless-stopped
     environment:
       POSTGRES_USER: voz
@@ -43,7 +62,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U voz -d vozcuidadana"]
+      test: [ "CMD-SHELL", "pg_isready -U voz -d vozcuidadana" ]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -51,14 +70,15 @@ services:
   # ── Redis ────────────────────────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
-    container_name: voz_redis
+    profiles:
+      - dev
     restart: unless-stopped
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 5s
       timeout: 3s
       retries: 10
