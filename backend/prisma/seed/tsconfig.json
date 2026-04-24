@@ -1,0 +1,18 @@
+{
+    "extends": "../../tsconfig.json",
+    "compilerOptions": {
+        "rootDir": ".",
+        "outDir": "../../dist/seed",
+        "types": [
+            "node"
+        ],
+        "noUnusedLocals": false,
+        "noUnusedParameters": false
+    },
+    "include": [
+        "./**/*"
+    ],
+    "exclude": [
+        "node_modules"
+    ]
+}

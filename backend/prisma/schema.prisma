@@ -79,6 +79,8 @@ model User {
 
   userRoles UserRole[]
 
+  auditLogs AuditLog[] @relation("AuditLogActor")
+
   assignedConversations Conversation[] @relation("ConversationAssignedUser")
   assignedCitizenTags   CitizenTag[]   @relation("CitizenTagAssignedBy")
   uploadedAttachments   Attachment[]   @relation("AttachmentUploadedBy")
@@ -234,6 +236,30 @@ model Tag {
 
   @@index([name])
   @@map("tags")
+}
+
+// ── Auditoría de acciones administrativas ─────────────────────────────────────
+
+/// Registro inmutable de acciones sensibles realizadas por usuarios admin.
+/// No se eliminan ni modifican — append-only por diseño.
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  actorId    String?  @map("actor_id") @db.Uuid    // null si la acción fue del sistema
+  action     String   @db.VarChar(100)              // ej: "user.create", "user.deactivate"
+  targetType String   @map("target_type") @db.VarChar(50)  // ej: "User", "Role"
+  targetId   String?  @map("target_id") @db.VarChar(255)
+  metadata   Json     @default("{}") @db.JsonB      // datos adicionales de la acción
+  ip         String?  @db.VarChar(45)               // IPv4 o IPv6
+  userAgent  String?  @map("user_agent") @db.VarChar(512)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  actor User? @relation("AuditLogActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([actorId])
+  @@index([action])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+  @@map("audit_logs")
 }
 
 model CitizenTag {
