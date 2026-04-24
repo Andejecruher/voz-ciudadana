@@ -21,8 +21,9 @@ export enum BotFsmState {
  */
 export interface BotSessionData {
   state: BotFsmState;
-  fullName?: string;
-  colonyId?: number;
+  name?: string;
+  lastName?: string;
+  neighborhoodId?: string;
   interests?: string[];
 }
 

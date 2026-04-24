@@ -2,8 +2,16 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-// Colonias de Cintalapa de Figueroa, Chiapas
-const colonies = [
+const toNameLower = (value: string): string =>
+  value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+
+// Colonias/barrios de Cintalapa de Figueroa, Chiapas
+const neighborhoodNames = [
   'Centro',
   'Barrio San Sebastián',
   'Barrio La Cruz',
@@ -31,42 +39,18 @@ const colonies = [
   'Ranchería La Libertad',
 ];
 
-// Departamentos de gobierno municipal
-const departments = [
-  'Presidencia Municipal',
-  'Secretaría General',
-  'Tesorería Municipal',
-  'Obras Públicas',
-  'Servicios Públicos',
-  'Desarrollo Social',
-  'Seguridad Pública',
-  'Educación y Cultura',
-  'Salud Municipal',
-  'Medio Ambiente',
-];
-
 async function main() {
   console.log('🌱 Seeding database...');
 
-  // Insertar colonias (upsert para idempotencia)
-  for (const name of colonies) {
-    await prisma.colony.upsert({
+  // Insertar neighborhoods (upsert por name para idempotencia)
+  for (const name of neighborhoodNames) {
+    await prisma.neighborhood.upsert({
       where: { name },
-      update: {},
-      create: { name },
+      update: { nameLower: toNameLower(name) },
+      create: { name, nameLower: toNameLower(name) },
     });
   }
-  console.log(`✅ ${colonies.length} colonies seeded`);
-
-  // Insertar departamentos
-  for (const name of departments) {
-    await prisma.department.upsert({
-      where: { name },
-      update: {},
-      create: { name },
-    });
-  }
-  console.log(`✅ ${departments.length} departments seeded`);
+  console.log(`✅ ${neighborhoodNames.length} neighborhoods seeded`);
 
   console.log('🎉 Seed complete');
 }

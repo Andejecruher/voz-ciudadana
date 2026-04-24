@@ -22,9 +22,9 @@
  */
 import { PrismaService } from './prisma.service';
 import { RedisService } from './redis.service';
-import { WhatsAppWebhookPayload, WhatsAppTextMessage } from '@/config/types';
-import { normalizePhone } from '@/utils/hmac.util';
-import { CitizenStatus, ConversationStatus, MessageDirection } from '@prisma/client';
+import { WhatsAppWebhookPayload, WhatsAppTextMessage } from '../config/types';
+import { normalizePhone } from '../utils/hmac.util';
+import { ConversationStatus, LeadStatus, MessageDirection, SourceChannel } from '@prisma/client';
 
 // ─── Estados de la FSM ────────────────────────────────────────────────────────
 
@@ -40,6 +40,8 @@ export enum BotFsmState {
   /** Esperando elección de colonia/barrio */
   INTERESTS = 'INTERESTS',
   /** Esperando selección de temas de interés */
+  AWAITING_INTERESTS = 'AWAITING_INTERESTS',
+  /** Esperando selección de temas de interés */
   COMPLETED = 'COMPLETED',
 }
 
@@ -49,8 +51,9 @@ export enum BotFsmState {
  */
 export interface BotSession {
   state: BotFsmState;
-  fullName?: string;
-  colonyId?: number;
+  name?: string;
+  lastName?: string;
+  neighborhoodId?: string;
   interests?: string[];
 }
 
@@ -146,6 +149,10 @@ export class BotService {
         await this.handleInterestsState(phone, text, waMessageId, session);
         break;
 
+      case BotFsmState.AWAITING_INTERESTS:
+        await this.handleAwaitingInterestsState(phone, text);
+        break;
+
       case BotFsmState.COMPLETED:
         // Ciudadano ya registrado — solo persiste el mensaje y espera derivación
         await this.persistInboundMessage(phone, text, waMessageId);
@@ -176,12 +183,12 @@ export class BotService {
   ): Promise<void> {
     const existing = await this.prisma.citizen.findUnique({ where: { phone } });
 
-    if (existing?.status === CitizenStatus.ACTIVE) {
+    if (existing?.leadStatus === LeadStatus.converted) {
       // Ya registrado — saltar a COMPLETED
       await this.saveResponse(phone, BotFsmState.COMPLETED, {});
       this.sendMessage(
         phone,
-        `¡Bienvenido de vuelta, ${existing.fullName ?? 'ciudadano'}! ¿En qué podemos ayudarte?`,
+        `¡Bienvenido de vuelta, ${existing.name ?? 'ciudadano'}! ¿En qué podemos ayudarte?`,
       );
       return;
     }
@@ -190,7 +197,7 @@ export class BotService {
     await this.prisma.citizen.upsert({
       where: { phone },
       update: {},
-      create: { phone, status: CitizenStatus.PENDING },
+      create: { phone, leadStatus: LeadStatus.new, sourceChannel: SourceChannel.whatsapp },
     });
 
     // Avanzar al siguiente estado
@@ -221,22 +228,27 @@ export class BotService {
       return;
     }
 
+    const [firstName, ...lastNames] = name.split(/\s+/).filter(Boolean);
+
     // Guardar nombre en DB
     await this.prisma.citizen.update({
       where: { phone },
-      data: { fullName: name },
+      data: { name: firstName, lastName: lastNames.join(' ') || null },
     });
 
-    // Cargar colonias disponibles
-    const colonies = await this.prisma.colony.findMany({
+    // Cargar colonias/barrios disponibles
+    const neighborhoods = await this.prisma.neighborhood.findMany({
       orderBy: { name: 'asc' },
       select: { id: true, name: true },
     });
 
-    const list = colonies.map((c, i) => `${i + 1}. ${c.name}`).join('\n');
+    const list = neighborhoods.map((n, i) => `${i + 1}. ${n.name}`).join('\n');
 
     // Guardar respuesta parcial en sesión Redis
-    await this.saveResponse(phone, BotFsmState.INTERESTS, { fullName: name });
+    await this.saveResponse(phone, BotFsmState.INTERESTS, {
+      name: firstName,
+      lastName: lastNames.join(' ') || undefined,
+    });
 
     this.sendMessage(
       phone,
@@ -254,16 +266,16 @@ export class BotService {
     _waMessageId: string,
     _session: BotSession,
   ): Promise<void> {
-    const colonies = await this.prisma.colony.findMany({
+    const neighborhoods = await this.prisma.neighborhood.findMany({
       orderBy: { name: 'asc' },
       select: { id: true, name: true },
     });
 
     const index = parseInt(text.trim(), 10);
-    const selected = !isNaN(index) ? colonies[index - 1] : undefined;
+    const selected = !isNaN(index) ? neighborhoods[index - 1] : undefined;
 
     if (!selected) {
-      const list = colonies.map((c, i) => `${i + 1}. ${c.name}`).join('\n');
+      const list = neighborhoods.map((n, i) => `${i + 1}. ${n.name}`).join('\n');
       this.sendMessage(
         phone,
         `No reconocí esa opción. Respondé con el número de tu colonia:\n\n${list}`,
@@ -271,21 +283,16 @@ export class BotService {
       return;
     }
 
-    // Guardar colonia en DB
+    // Guardar colonia/barrio en DB
     await this.prisma.citizen.update({
       where: { phone },
-      data: { colonyId: selected.id },
+      data: { neighborhoodId: selected.id, neighborhood: selected.name },
     });
 
     // Avanzar estado con colonia guardada
-    await this.saveResponse(phone, BotFsmState.COMPLETED, {
-      colonyId: selected.id,
+    await this.saveResponse(phone, BotFsmState.AWAITING_INTERESTS, {
+      neighborhoodId: selected.id,
     });
-
-    // Antes de avanzar a COMPLETED, necesitamos los intereses
-    // Supuesto: usamos un estado intermedio — volvemos a INTERESTS para capturar intereses
-    // Nota: el estado COMPLETED se guarda solo cuando los intereses también se capturan
-    await this.advanceState(phone, BotFsmState.COMPLETED);
 
     const options = Object.entries(INTEREST_MAP)
       .map(([k, v]) => `${k}. ${v.replace(/_/g, ' ')}`)
@@ -296,11 +303,45 @@ export class BotService {
       `✅ Colonia *${selected.name}* registrada.\n\n` +
         `¿Qué temas te interesan? Respondé con los números separados por coma (ej: 1,3):\n\n${options}`,
     );
+  }
 
-    // Nota: para capturar intereses, el próximo mensaje llega al estado COMPLETED
-    // que persiste el mensaje. Aquí hay un gap — para solucionarlo se puede agregar
-    // un estado AWAITING_INTERESTS separado entre INTERESTS y COMPLETED.
-    // TODO: Refactorizar con estado AWAITING_INTERESTS explícito.
+  /**
+   * Estado AWAITING_INTERESTS: guarda temas de interés y marca al ciudadano como ACTIVE.
+   */
+  private async handleAwaitingInterestsState(phone: string, text: string): Promise<void> {
+    const selectedInterests = text
+      .split(',')
+      .map((v) => parseInt(v.trim(), 10))
+      .filter((v) => Number.isInteger(v) && INTEREST_MAP[v])
+      .map((v) => INTEREST_MAP[v]);
+
+    const uniqueInterests = [...new Set(selectedInterests)];
+
+    if (uniqueInterests.length === 0) {
+      const options = Object.entries(INTEREST_MAP)
+        .map(([k, v]) => `${k}. ${v.replace(/_/g, ' ')}`)
+        .join('\n');
+      this.sendMessage(
+        phone,
+        `No reconocí esos temas. Respondé con números separados por coma (ej: 1,3):\n\n${options}`,
+      );
+      return;
+    }
+
+    await this.prisma.citizen.update({
+      where: { phone },
+      data: {
+        interests: uniqueInterests,
+        leadStatus: LeadStatus.converted,
+      },
+    });
+
+    await this.advanceState(phone, BotFsmState.COMPLETED);
+
+    this.sendMessage(
+      phone,
+      '🎉 ¡Registro completado! Ya podés enviarnos reportes o solicitudes y te vamos a responder por este medio.',
+    );
   }
 
   // ─── Helpers de sesión ────────────────────────────────────────────────────
@@ -369,6 +410,7 @@ export class BotService {
       [BotFsmState.NAME]: '¿Cuál es tu nombre completo?',
       [BotFsmState.NEIGHBORHOOD]: '¿En qué colonia vivís?',
       [BotFsmState.INTERESTS]: '¿Qué temas te interesan?',
+      [BotFsmState.AWAITING_INTERESTS]: '¿Qué temas te interesan?',
       [BotFsmState.COMPLETED]: '¿En qué podemos ayudarte?',
     };
     return responses[state] ?? 'Hola, ¿cómo podemos ayudarte?';
@@ -393,9 +435,9 @@ export class BotService {
     await this.prisma.message.create({
       data: {
         conversationId: conversation.id,
-        direction: MessageDirection.INBOUND,
+        direction: MessageDirection.inbound,
         body: text,
-        waMessageId,
+        externalMessageId: waMessageId,
       },
     });
   }
@@ -407,13 +449,13 @@ export class BotService {
    */
   private async ensureOpenConversation(citizenId: string) {
     const existing = await this.prisma.conversation.findFirst({
-      where: { citizenId, status: ConversationStatus.OPEN },
+      where: { citizenId, status: ConversationStatus.open },
     });
 
     if (existing) return existing;
 
     return this.prisma.conversation.create({
-      data: { citizenId, status: ConversationStatus.OPEN },
+      data: { citizenId, status: ConversationStatus.open },
     });
   }
 

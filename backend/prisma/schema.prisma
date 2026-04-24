@@ -1,9 +1,3 @@
-// Prisma schema — Voz Ciudadana
-// Base de datos: PostgreSQL
-// Nota: Cintalapa de Figueroa es el municipio objetivo del proyecto.
-// El modelo Colony tiene un campo `slug` único para seedear colonias
-// sin duplicados (ej: "centro", "nuevo_milenio", etc.)
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,114 +7,249 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ─── Enums ────────────────────────────────────────────────────────────────────
+enum SourceChannel {
+  whatsapp
+  web
+  event
+  referral
+  other
 
-enum CitizenStatus {
-  PENDING      // Registro iniciado pero incompleto
-  ACTIVE       // Registro completo y verificado
-  BLOCKED      // Ciudadano bloqueado por moderación
+  @@map("source_channel")
+}
+
+enum LeadStatus {
+  new
+  contacted
+  engaged
+  converted
+  unsubscribed
+
+  @@map("lead_status")
 }
 
 enum ConversationStatus {
-  OPEN    // Conversación activa
-  CLOSED  // Conversación cerrada/resuelta
+  open
+  in_progress
+  resolved
+  closed
+
+  @@map("conversation_status")
+}
+
+enum ConversationChannel {
+  whatsapp
+  web_chat
+  email
+  sms
+  other
+
+  @@map("conversation_channel")
 }
 
 enum MessageDirection {
-  INBOUND   // Mensaje recibido del ciudadano
-  OUTBOUND  // Mensaje enviado al ciudadano
+  inbound
+  outbound
+
+  @@map("message_direction")
 }
 
-// ─── Tablas maestras ──────────────────────────────────────────────────────────
+enum MessageType {
+  text
+  image
+  audio
+  video
+  document
+  location
+  template
+  interactive
+  system
 
-/// Colonia / barrio al que pertenece un ciudadano.
-/// El campo `slug` permite seedear sin duplicados y referenciar colonias
-/// de forma programática (ej: "centro", "nuevo_milenio_cintalapa").
-/// El valor por defecto de `city` es Cintalapa de Figueroa ya que es el
-/// municipio objetivo del proyecto.
-model Colony {
-  id        Int       @id @default(autoincrement())
-  /// Nombre legible de la colonia (ej: "Centro", "Nuevo Milenio")
-  name      String    @unique
-  /// Slug único y estable para seedear/referenciar sin duplicados
-  /// Formato: snake_case, sin acentos, único por municipio
-  /// Ejemplo: "centro", "nuevo_milenio", "las_palmas"
-  slug      String    @unique
-  city      String    @default("Cintalapa de Figueroa")
-  state     String    @default("Chiapas")
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  @@map("message_type")
+}
 
-  citizens  Citizen[]
+model User {
+  id             String   @id @default(uuid()) @db.Uuid
+  email          String   @unique @db.VarChar(255)
+  hashedPassword String   @map("hashed_password") @db.VarChar(255)
+  fullName       String?  @map("full_name") @db.VarChar(255)
+  isActive       Boolean  @default(true) @map("is_active")
+  isSuperuser    Boolean  @default(false) @map("is_superuser")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  userRoles UserRole[]
+
+  assignedConversations Conversation[] @relation("ConversationAssignedUser")
+  assignedCitizenTags   CitizenTag[]   @relation("CitizenTagAssignedBy")
+  uploadedAttachments   Attachment[]   @relation("AttachmentUploadedBy")
+
+  @@index([email])
+  @@map("users")
+}
+
+model Role {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique @db.VarChar(50)
+  description String?  @db.VarChar(255)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  userRoles UserRole[]
 
   @@index([name])
-  @@index([slug])
-  @@map("colonies")
+  @@map("roles")
 }
 
-/// Departamento/área de gobierno que atiende conversaciones
-model Department {
-  id        Int       @id @default(autoincrement())
-  name      String    @unique
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+model UserRole {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  roleId     String   @map("role_id") @db.Uuid
+  assignedAt DateTime @default(now()) @map("assigned_at") @db.Timestamptz(6)
 
-  conversations Conversation[]
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
-  @@map("departments")
+  @@unique([userId, roleId], map: "uq_user_roles_user_role")
+  @@index([userId])
+  @@index([roleId])
+  @@map("user_roles")
 }
 
-// ─── Dominio core ─────────────────────────────────────────────────────────────
+model Neighborhood {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique @db.VarChar(255)
+  nameLower   String   @map("name_lower") @db.VarChar(255)
+  description String?  @db.Text
+  zone        String?  @db.VarChar(100)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-/// Ciudadano registrado a través de WhatsApp
+  citizens Citizen[]
+
+  @@index([name])
+  @@index([nameLower])
+  @@index([zone])
+  @@map("neighborhoods")
+}
+
 model Citizen {
-  id        String        @id @default(uuid())
-  phone     String        @unique  // Número en formato E.164 (ej. +521234567890)
-  fullName  String?
-  colonyId  Int?
-  interests Json?         // Array de strings con temas de interés
-  status    CitizenStatus @default(PENDING)
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  id             String        @id @default(uuid()) @db.Uuid
+  phone          String        @unique @db.VarChar(30)
+  name           String?       @db.VarChar(255)
+  lastName       String?       @map("last_name") @db.VarChar(255)
+  email          String?       @db.VarChar(255)
+  sourceChannel  SourceChannel @default(whatsapp) @map("source_channel")
+  leadStatus     LeadStatus    @default(new) @map("lead_status")
+  consentGiven   Boolean       @default(false) @map("consent_given")
+  consentAt      DateTime?     @map("consent_at") @db.Timestamptz(6)
+  neighborhood   String?       @db.VarChar(255)
+  neighborhoodId String?       @map("neighborhood_id") @db.Uuid
+  interests      String[]      @default([]) @db.Text
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  colony        Colony?        @relation(fields: [colonyId], references: [id])
+  neighborhoodRef Neighborhood? @relation(fields: [neighborhoodId], references: [id], onDelete: SetNull)
+
   conversations Conversation[]
+  citizenTags   CitizenTag[]
+  attachments   Attachment[]
 
   @@index([phone])
-  @@index([status])
+  @@index([email])
   @@map("citizens")
 }
 
-/// Conversación vinculada a un ciudadano y opcionalmente a un departamento
 model Conversation {
-  id             String             @id @default(uuid())
-  citizenId      String
-  status         ConversationStatus @default(OPEN)
-  assignedDeptId Int?
-  createdAt      DateTime           @default(now())
-  updatedAt      DateTime           @updatedAt
+  id             String              @id @default(uuid()) @db.Uuid
+  citizenId      String              @map("citizen_id") @db.Uuid
+  status         ConversationStatus  @default(open)
+  channel        ConversationChannel @default(whatsapp)
+  assignedDept   String?             @map("assigned_dept") @db.VarChar(100)
+  assignedUserId String?             @map("assigned_user_id") @db.Uuid
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  citizen        Citizen     @relation(fields: [citizenId], references: [id])
-  assignedDept   Department? @relation(fields: [assignedDeptId], references: [id])
-  messages       Message[]
+  citizen Citizen @relation(fields: [citizenId], references: [id], onDelete: Cascade)
 
-  @@index([citizenId])
-  @@index([status])
+  assignedUser User? @relation("ConversationAssignedUser", fields: [assignedUserId], references: [id], onDelete: SetNull)
+
+  messages Message[]
+
+  @@index([assignedUserId])
   @@map("conversations")
 }
 
-/// Mensaje individual dentro de una conversación
 model Message {
-  id             String           @id @default(uuid())
-  conversationId String
-  direction      MessageDirection
-  body           String
-  waMessageId    String?          @unique  // ID del mensaje en la API de WhatsApp
-  createdAt      DateTime         @default(now())
+  id                String           @id @default(uuid()) @db.Uuid
+  conversationId    String           @map("conversation_id") @db.Uuid
+  body              String           @db.Text
+  direction         MessageDirection
+  messageType       MessageType      @default(text) @map("message_type")
+  externalMessageId String?          @map("external_message_id") @db.VarChar(255)
+  attachmentId      String?          @map("attachment_id") @db.Uuid
+  meta              Json             @default("{}") @db.JsonB
+  createdAt         DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  conversation Conversation @relation(fields: [conversationId], references: [id])
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
-  @@index([conversationId])
-  @@index([waMessageId])
+  attachment Attachment? @relation("MessageAttachmentByAttachmentId", fields: [attachmentId], references: [id], onDelete: SetNull)
+
+  attachmentsViaMessageId Attachment[] @relation("AttachmentBelongsToMessage")
+
+  @@index([externalMessageId])
   @@map("messages")
+}
+
+model Attachment {
+  id               String   @id @default(uuid()) @db.Uuid
+  storageKey       String   @map("storage_key") @db.VarChar(1024)
+  mimeType         String   @map("mime_type") @db.VarChar(127)
+  fileSizeBytes    BigInt   @map("file_size_bytes")
+  originalFilename String?  @map("original_filename") @db.VarChar(512)
+  cdnUrl           String?  @map("cdn_url") @db.Text
+  messageId        String?  @map("message_id") @db.Uuid
+  citizenId        String?  @map("citizen_id") @db.Uuid
+  uploadedBy       String?  @map("uploaded_by") @db.Uuid
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  message Message? @relation("AttachmentBelongsToMessage", fields: [messageId], references: [id], onDelete: SetNull)
+
+  citizen   Citizen? @relation(fields: [citizenId], references: [id], onDelete: SetNull)
+  uploader  User?    @relation("AttachmentUploadedBy", fields: [uploadedBy], references: [id], onDelete: SetNull)
+
+  messagesViaAttachmentId Message[] @relation("MessageAttachmentByAttachmentId")
+
+  @@index([messageId])
+  @@index([citizenId])
+  @@map("attachments")
+}
+
+model Tag {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String   @unique @db.VarChar(100)
+  description String?  @db.Text
+  color       String?  @db.VarChar(20)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  citizenTags CitizenTag[]
+
+  @@index([name])
+  @@map("tags")
+}
+
+model CitizenTag {
+  id           String   @id @default(uuid()) @db.Uuid
+  citizenId    String   @map("citizen_id") @db.Uuid
+  tagId        String   @map("tag_id") @db.Uuid
+  assignedById String?  @map("assigned_by_id") @db.Uuid
+  assignedAt   DateTime @default(now()) @map("assigned_at") @db.Timestamptz(6)
+
+  citizen Citizen @relation(fields: [citizenId], references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  assignedBy User? @relation("CitizenTagAssignedBy", fields: [assignedById], references: [id], onDelete: SetNull)
+
+  @@unique([citizenId, tagId], map: "uq_citizen_tags_citizen_tag")
+  @@index([citizenId])
+  @@index([tagId])
+  @@map("citizen_tags")
 }
