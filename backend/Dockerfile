@@ -1,23 +1,46 @@
-# ─── Build stage ──────────────────────────────────────────────────────────────
-FROM node:20-alpine AS builder
+# ─── Stage 1: deps — instala TODAS las dependencias (dev + prod) ───────────────
+FROM node:20-alpine AS deps
 
 WORKDIR /app
 
 RUN apk add --no-cache openssl
 
-# Copiar manifests primero para aprovechar caché de layers
-COPY package.json tsconfig.json ./
+COPY package.json pnpm-lock.yaml* ./
+
+# npm ci para reproducibilidad; instala devDependencies también (default)
 RUN npm install --frozen-lockfile
 
-# Copiar schema de Prisma y generar cliente
+# ─── Stage 2: dev — imagen de desarrollo con hot-reload ────────────────────────
+FROM deps AS dev
+
+WORKDIR /app
+
+# Copiar el resto del código fuente
+COPY prisma ./prisma
+COPY src ./src
+COPY tsconfig.json ./
+
+# Generar cliente Prisma (necesario antes de correr ts-node)
+RUN npx prisma generate
+
+EXPOSE 8000
+
+# ts-node-dev con hot-reload; prisma migrate dev y seed se corren manualmente
+CMD ["npm", "run", "dev"]
+
+# ─── Stage 3: builder — compila TypeScript para producción ────────────────────
+FROM deps AS builder
+
+WORKDIR /app
+
 COPY prisma ./prisma
 RUN npx prisma generate
 
-# Copiar código fuente y compilar
 COPY src ./src
+COPY tsconfig.json ./
 RUN npm run build
 
-# ─── Runtime stage ────────────────────────────────────────────────────────────
+# ─── Stage 4: runner — imagen de producción minimal ───────────────────────────
 FROM node:20-alpine AS runner
 
 WORKDIR /app
@@ -35,5 +58,5 @@ COPY prisma ./prisma
 
 EXPOSE 8000
 
-# Ejecutar migraciones y luego iniciar la app Express
+# En prod: aplica migraciones pendientes y levanta la app
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/server.js"]

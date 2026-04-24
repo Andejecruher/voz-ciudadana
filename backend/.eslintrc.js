@@ -12,7 +12,7 @@ module.exports = {
 
   parser: '@typescript-eslint/parser',
   parserOptions: {
-    project: './tsconfig.json',
+    project: ['./tsconfig.json', './prisma/seed/tsconfig.json'],
     tsconfigRootDir: __dirname,
     sourceType: 'module',
     ecmaVersion: 2021,
@@ -73,5 +73,5 @@ module.exports = {
     'no-eval': 'error',
   },
 
-  ignorePatterns: ['dist/', 'node_modules/', '*.js', '!.eslintrc.js'],
+  ignorePatterns: ['dist/', 'node_modules/', '*.js', '!.eslintrc.js', 'prisma/'],
 };
