@@ -192,6 +192,119 @@ const schemas: Record<string, SchemaObject> = {
       isActive: { type: 'boolean', example: true },
     },
   },
+  CursorPaginationMeta: {
+    type: 'object',
+    required: ['hasNextPage', 'count'],
+    properties: {
+      nextCursor: {
+        type: 'string',
+        format: 'uuid',
+        nullable: true,
+        description: 'Cursor para solicitar la siguiente página',
+      },
+      hasNextPage: {
+        type: 'boolean',
+        example: true,
+      },
+      count: {
+        type: 'integer',
+        minimum: 0,
+        example: 20,
+      },
+    },
+  },
+  NeighborhoodCatalog: {
+    type: 'object',
+    required: ['id', 'name', 'createdAt', 'updatedAt'],
+    properties: {
+      id: { type: 'string', format: 'uuid' },
+      name: { type: 'string', example: 'Centro' },
+      description: { type: 'string', nullable: true, example: 'Zona céntrica de la ciudad' },
+      zone: { type: 'string', nullable: true, example: 'Norte' },
+      createdAt: { type: 'string', format: 'date-time' },
+      updatedAt: { type: 'string', format: 'date-time' },
+    },
+  },
+  CreateNeighborhoodRequest: {
+    type: 'object',
+    required: ['name'],
+    properties: {
+      name: { type: 'string', minLength: 2, maxLength: 255, example: 'Centro' },
+      description: { type: 'string', nullable: true, example: 'Zona céntrica de la ciudad' },
+      zone: { type: 'string', nullable: true, example: 'Norte' },
+    },
+  },
+  UpdateNeighborhoodRequest: {
+    type: 'object',
+    properties: {
+      name: { type: 'string', minLength: 2, maxLength: 255, example: 'Centro Histórico' },
+      description: { type: 'string', nullable: true, example: 'Descripción actualizada' },
+      zone: { type: 'string', nullable: true, example: 'Centro' },
+    },
+  },
+  TagCatalog: {
+    type: 'object',
+    required: ['id', 'name', 'createdAt'],
+    properties: {
+      id: { type: 'string', format: 'uuid' },
+      name: { type: 'string', example: 'infraestructura' },
+      description: { type: 'string', nullable: true, example: 'Temas de obras públicas' },
+      color: { type: 'string', nullable: true, example: '#0EA5E9' },
+      createdAt: { type: 'string', format: 'date-time' },
+    },
+  },
+  CreateTagRequest: {
+    type: 'object',
+    required: ['name'],
+    properties: {
+      name: { type: 'string', minLength: 2, maxLength: 100, example: 'infraestructura' },
+      description: { type: 'string', nullable: true, example: 'Temas de obras públicas' },
+      color: { type: 'string', nullable: true, example: '#0EA5E9' },
+    },
+  },
+  UpdateTagRequest: {
+    type: 'object',
+    properties: {
+      name: { type: 'string', minLength: 2, maxLength: 100, example: 'infraestructura-local' },
+      description: { type: 'string', nullable: true, example: 'Descripción actualizada' },
+      color: { type: 'string', nullable: true, example: '#F97316' },
+    },
+  },
+  DepartmentCatalog: {
+    type: 'object',
+    required: ['id', 'slug', 'name', 'isActive', 'keywords', 'createdAt', 'updatedAt'],
+    properties: {
+      id: { type: 'string', format: 'uuid' },
+      slug: { type: 'string', example: 'general' },
+      name: { type: 'string', example: 'Atención General' },
+      description: { type: 'string', nullable: true, example: 'Canal de atención general' },
+      isActive: { type: 'boolean', example: true },
+      keywords: { type: 'array', items: { type: 'string' }, example: ['general', 'ayuda'] },
+      createdAt: { type: 'string', format: 'date-time' },
+      updatedAt: { type: 'string', format: 'date-time' },
+    },
+  },
+  CreateDepartmentRequest: {
+    type: 'object',
+    required: ['slug', 'name'],
+    properties: {
+      slug: { type: 'string', pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$', example: 'obras-publicas' },
+      name: { type: 'string', minLength: 2, maxLength: 255, example: 'Obras Públicas' },
+      description: { type: 'string', nullable: true, example: 'Gestión de infraestructura urbana' },
+      isActive: { type: 'boolean', example: true },
+      keywords: { type: 'array', items: { type: 'string' }, example: ['bache', 'pavimento'] },
+    },
+  },
+  UpdateDepartmentRequest: {
+    type: 'object',
+    properties: {
+      slug: { type: 'string', pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$', example: 'obras' },
+      name: { type: 'string', minLength: 2, maxLength: 255, example: 'Obras' },
+      description: { type: 'string', nullable: true, example: 'Descripción actualizada' },
+      isActive: { type: 'boolean', example: false },
+      keywords: { type: 'array', items: { type: 'string' }, example: ['alumbrado', 'banqueta'] },
+    },
+  },
   ConversationFlowState: {
     type: 'string',
     enum: ['REGISTERING', 'DEPARTMENT_ROUTING', 'BOT_FLOW', 'HUMAN_FLOW', 'ESCALATED', 'CLOSED'],
@@ -886,6 +999,672 @@ const paths: PathsObject = {
         },
         401: { $ref: '#/components/responses/Unauthorized' },
         403: { $ref: '#/components/responses/Forbidden' },
+        500: { $ref: '#/components/responses/InternalError' },
+      },
+    },
+  },
+
+  '/api/v1/admin/neighborhoods': {
+    get: {
+      tags: ['Admin'],
+      summary: 'Listar barrios (catálogo)',
+      description:
+        'Lista barrios con filtros, búsqueda y paginación cursor. Acceso para SUPERADMIN y COORDINADOR.',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          in: 'query',
+          name: 'cursor',
+          required: false,
+          schema: { type: 'string', format: 'uuid' },
+          description: 'Cursor de la página anterior',
+        },
+        {
+          in: 'query',
+          name: 'limit',
+          required: false,
+          schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 },
+          description: 'Tamaño de página',
+        },
+        {
+          in: 'query',
+          name: 'search',
+          required: false,
+          schema: { type: 'string' },
+          description: 'Búsqueda por nombre de barrio',
+        },
+        {
+          in: 'query',
+          name: 'zone',
+          required: false,
+          schema: { type: 'string' },
+          description: 'Filtro por zona',
+        },
+      ],
+      responses: {
+        200: {
+          description: 'Listado de barrios',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['neighborhoods', 'meta'],
+                properties: {
+                  neighborhoods: {
+                    type: 'array',
+                    items: { $ref: '#/components/schemas/NeighborhoodCatalog' },
+                  },
+                  meta: { $ref: '#/components/schemas/CursorPaginationMeta' },
+                },
+              },
+            },
+          },
+        },
+        400: {
+          description: 'Parámetros inválidos',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ValidationErrorResponse' },
+            },
+          },
+        },
+        401: { $ref: '#/components/responses/Unauthorized' },
+        403: { $ref: '#/components/responses/Forbidden' },
+        500: { $ref: '#/components/responses/InternalError' },
+      },
+    },
+    post: {
+      tags: ['Admin'],
+      summary: 'Crear barrio (catálogo)',
+      description: 'Crea un nuevo barrio. Solo SUPERADMIN.',
+      security: [{ bearerAuth: [] }],
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: { $ref: '#/components/schemas/CreateNeighborhoodRequest' },
+          },
+        },
+      },
+      responses: {
+        201: {
+          description: 'Barrio creado',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['neighborhood'],
+                properties: {
+                  neighborhood: { $ref: '#/components/schemas/NeighborhoodCatalog' },
+                },
+              },
+            },
+          },
+        },
+        400: {
+          description: 'Payload inválido',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ValidationErrorResponse' },
+            },
+          },
+        },
+        401: { $ref: '#/components/responses/Unauthorized' },
+        403: { $ref: '#/components/responses/Forbidden' },
+        409: {
+          description: 'Barrio duplicado',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ErrorResponse' },
+            },
+          },
+        },
+        500: { $ref: '#/components/responses/InternalError' },
+      },
+    },
+  },
+
+  '/api/v1/admin/neighborhoods/{id}': {
+    patch: {
+      tags: ['Admin'],
+      summary: 'Actualizar barrio (catálogo)',
+      description: 'Actualiza un barrio. Solo SUPERADMIN.',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          in: 'path',
+          name: 'id',
+          required: true,
+          schema: { type: 'string', format: 'uuid' },
+          description: 'ID del barrio',
+        },
+      ],
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: { $ref: '#/components/schemas/UpdateNeighborhoodRequest' },
+          },
+        },
+      },
+      responses: {
+        200: {
+          description: 'Barrio actualizado',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['neighborhood'],
+                properties: {
+                  neighborhood: { $ref: '#/components/schemas/NeighborhoodCatalog' },
+                },
+              },
+            },
+          },
+        },
+        400: {
+          description: 'Payload inválido',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ValidationErrorResponse' },
+            },
+          },
+        },
+        401: { $ref: '#/components/responses/Unauthorized' },
+        403: { $ref: '#/components/responses/Forbidden' },
+        404: { $ref: '#/components/responses/NotFound' },
+        409: {
+          description: 'Barrio duplicado',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ErrorResponse' },
+            },
+          },
+        },
+        500: { $ref: '#/components/responses/InternalError' },
+      },
+    },
+    delete: {
+      tags: ['Admin'],
+      summary: 'Eliminar barrio (catálogo)',
+      description:
+        'Elimina físicamente un barrio solo si no tiene ciudadanos asociados. Solo SUPERADMIN.',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          in: 'path',
+          name: 'id',
+          required: true,
+          schema: { type: 'string', format: 'uuid' },
+          description: 'ID del barrio',
+        },
+      ],
+      responses: {
+        200: {
+          description: 'Barrio eliminado',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['message', 'neighborhood'],
+                properties: {
+                  message: { type: 'string' },
+                  neighborhood: { $ref: '#/components/schemas/NeighborhoodCatalog' },
+                },
+              },
+            },
+          },
+        },
+        401: { $ref: '#/components/responses/Unauthorized' },
+        403: { $ref: '#/components/responses/Forbidden' },
+        404: { $ref: '#/components/responses/NotFound' },
+        409: {
+          description: 'Barrio en uso por ciudadanos',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ErrorResponse' },
+            },
+          },
+        },
+        500: { $ref: '#/components/responses/InternalError' },
+      },
+    },
+  },
+
+  '/api/v1/admin/tags': {
+    get: {
+      tags: ['Admin'],
+      summary: 'Listar etiquetas (catálogo)',
+      description:
+        'Lista etiquetas con filtros, búsqueda y paginación cursor. Acceso para SUPERADMIN y COORDINADOR.',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          in: 'query',
+          name: 'cursor',
+          required: false,
+          schema: { type: 'string', format: 'uuid' },
+          description: 'Cursor de la página anterior',
+        },
+        {
+          in: 'query',
+          name: 'limit',
+          required: false,
+          schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 },
+          description: 'Tamaño de página',
+        },
+        {
+          in: 'query',
+          name: 'search',
+          required: false,
+          schema: { type: 'string' },
+          description: 'Búsqueda por nombre o descripción',
+        },
+        {
+          in: 'query',
+          name: 'color',
+          required: false,
+          schema: { type: 'string' },
+          description: 'Filtro por color',
+        },
+      ],
+      responses: {
+        200: {
+          description: 'Listado de etiquetas',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['tags', 'meta'],
+                properties: {
+                  tags: { type: 'array', items: { $ref: '#/components/schemas/TagCatalog' } },
+                  meta: { $ref: '#/components/schemas/CursorPaginationMeta' },
+                },
+              },
+            },
+          },
+        },
+        400: {
+          description: 'Parámetros inválidos',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ValidationErrorResponse' },
+            },
+          },
+        },
+        401: { $ref: '#/components/responses/Unauthorized' },
+        403: { $ref: '#/components/responses/Forbidden' },
+        500: { $ref: '#/components/responses/InternalError' },
+      },
+    },
+    post: {
+      tags: ['Admin'],
+      summary: 'Crear etiqueta (catálogo)',
+      description: 'Crea una nueva etiqueta. Solo SUPERADMIN.',
+      security: [{ bearerAuth: [] }],
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: { $ref: '#/components/schemas/CreateTagRequest' },
+          },
+        },
+      },
+      responses: {
+        201: {
+          description: 'Etiqueta creada',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['tag'],
+                properties: { tag: { $ref: '#/components/schemas/TagCatalog' } },
+              },
+            },
+          },
+        },
+        400: {
+          description: 'Payload inválido',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ValidationErrorResponse' },
+            },
+          },
+        },
+        401: { $ref: '#/components/responses/Unauthorized' },
+        403: { $ref: '#/components/responses/Forbidden' },
+        409: {
+          description: 'Etiqueta duplicada',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ErrorResponse' },
+            },
+          },
+        },
+        500: { $ref: '#/components/responses/InternalError' },
+      },
+    },
+  },
+
+  '/api/v1/admin/tags/{id}': {
+    patch: {
+      tags: ['Admin'],
+      summary: 'Actualizar etiqueta (catálogo)',
+      description: 'Actualiza una etiqueta. Solo SUPERADMIN.',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          in: 'path',
+          name: 'id',
+          required: true,
+          schema: { type: 'string', format: 'uuid' },
+          description: 'ID de la etiqueta',
+        },
+      ],
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: { $ref: '#/components/schemas/UpdateTagRequest' },
+          },
+        },
+      },
+      responses: {
+        200: {
+          description: 'Etiqueta actualizada',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['tag'],
+                properties: { tag: { $ref: '#/components/schemas/TagCatalog' } },
+              },
+            },
+          },
+        },
+        400: {
+          description: 'Payload inválido',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ValidationErrorResponse' },
+            },
+          },
+        },
+        401: { $ref: '#/components/responses/Unauthorized' },
+        403: { $ref: '#/components/responses/Forbidden' },
+        404: { $ref: '#/components/responses/NotFound' },
+        409: {
+          description: 'Etiqueta duplicada',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ErrorResponse' },
+            },
+          },
+        },
+        500: { $ref: '#/components/responses/InternalError' },
+      },
+    },
+    delete: {
+      tags: ['Admin'],
+      summary: 'Eliminar etiqueta (catálogo)',
+      description:
+        'Elimina físicamente una etiqueta solo si no está asignada a ciudadanos. Solo SUPERADMIN.',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          in: 'path',
+          name: 'id',
+          required: true,
+          schema: { type: 'string', format: 'uuid' },
+          description: 'ID de la etiqueta',
+        },
+      ],
+      responses: {
+        200: {
+          description: 'Etiqueta eliminada',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['message', 'tag'],
+                properties: {
+                  message: { type: 'string' },
+                  tag: { $ref: '#/components/schemas/TagCatalog' },
+                },
+              },
+            },
+          },
+        },
+        401: { $ref: '#/components/responses/Unauthorized' },
+        403: { $ref: '#/components/responses/Forbidden' },
+        404: { $ref: '#/components/responses/NotFound' },
+        409: {
+          description: 'Etiqueta en uso por ciudadanos',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ErrorResponse' },
+            },
+          },
+        },
+        500: { $ref: '#/components/responses/InternalError' },
+      },
+    },
+  },
+
+  '/api/v1/admin/departments': {
+    get: {
+      tags: ['Admin'],
+      summary: 'Listar departamentos (catálogo)',
+      description:
+        'Lista departamentos con filtros, búsqueda y paginación cursor. Acceso para SUPERADMIN y COORDINADOR.',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          in: 'query',
+          name: 'cursor',
+          required: false,
+          schema: { type: 'string', format: 'uuid' },
+          description: 'Cursor de la página anterior',
+        },
+        {
+          in: 'query',
+          name: 'limit',
+          required: false,
+          schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 },
+          description: 'Tamaño de página',
+        },
+        {
+          in: 'query',
+          name: 'search',
+          required: false,
+          schema: { type: 'string' },
+          description: 'Búsqueda por slug, nombre o keyword',
+        },
+        {
+          in: 'query',
+          name: 'isActive',
+          required: false,
+          schema: { type: 'boolean' },
+          description: 'Filtro por estado activo/inactivo',
+        },
+      ],
+      responses: {
+        200: {
+          description: 'Listado de departamentos',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['departments', 'meta'],
+                properties: {
+                  departments: {
+                    type: 'array',
+                    items: { $ref: '#/components/schemas/DepartmentCatalog' },
+                  },
+                  meta: { $ref: '#/components/schemas/CursorPaginationMeta' },
+                },
+              },
+            },
+          },
+        },
+        400: {
+          description: 'Parámetros inválidos',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ValidationErrorResponse' },
+            },
+          },
+        },
+        401: { $ref: '#/components/responses/Unauthorized' },
+        403: { $ref: '#/components/responses/Forbidden' },
+        500: { $ref: '#/components/responses/InternalError' },
+      },
+    },
+    post: {
+      tags: ['Admin'],
+      summary: 'Crear departamento (catálogo)',
+      description: 'Crea un nuevo departamento. Solo SUPERADMIN.',
+      security: [{ bearerAuth: [] }],
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: { $ref: '#/components/schemas/CreateDepartmentRequest' },
+          },
+        },
+      },
+      responses: {
+        201: {
+          description: 'Departamento creado',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['department'],
+                properties: {
+                  department: { $ref: '#/components/schemas/DepartmentCatalog' },
+                },
+              },
+            },
+          },
+        },
+        400: {
+          description: 'Payload inválido',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ValidationErrorResponse' },
+            },
+          },
+        },
+        401: { $ref: '#/components/responses/Unauthorized' },
+        403: { $ref: '#/components/responses/Forbidden' },
+        409: {
+          description: 'Slug duplicado',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ErrorResponse' },
+            },
+          },
+        },
+        500: { $ref: '#/components/responses/InternalError' },
+      },
+    },
+  },
+
+  '/api/v1/admin/departments/{id}': {
+    patch: {
+      tags: ['Admin'],
+      summary: 'Actualizar departamento (catálogo)',
+      description: 'Actualiza un departamento. Solo SUPERADMIN.',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          in: 'path',
+          name: 'id',
+          required: true,
+          schema: { type: 'string', format: 'uuid' },
+          description: 'ID del departamento',
+        },
+      ],
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: { $ref: '#/components/schemas/UpdateDepartmentRequest' },
+          },
+        },
+      },
+      responses: {
+        200: {
+          description: 'Departamento actualizado',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['department'],
+                properties: {
+                  department: { $ref: '#/components/schemas/DepartmentCatalog' },
+                },
+              },
+            },
+          },
+        },
+        400: {
+          description: 'Payload inválido',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ValidationErrorResponse' },
+            },
+          },
+        },
+        401: { $ref: '#/components/responses/Unauthorized' },
+        403: { $ref: '#/components/responses/Forbidden' },
+        404: { $ref: '#/components/responses/NotFound' },
+        409: {
+          description: 'Slug duplicado',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ErrorResponse' },
+            },
+          },
+        },
+        500: { $ref: '#/components/responses/InternalError' },
+      },
+    },
+    delete: {
+      tags: ['Admin'],
+      summary: 'Desactivar departamento (catálogo)',
+      description:
+        'Soft delete del departamento (`isActive=false`). Se protege el slug `general`. Solo SUPERADMIN.',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          in: 'path',
+          name: 'id',
+          required: true,
+          schema: { type: 'string', format: 'uuid' },
+          description: 'ID del departamento',
+        },
+      ],
+      responses: {
+        200: {
+          description: 'Departamento desactivado',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['message', 'department'],
+                properties: {
+                  message: { type: 'string' },
+                  department: { $ref: '#/components/schemas/DepartmentCatalog' },
+                },
+              },
+            },
+          },
+        },
+        401: { $ref: '#/components/responses/Unauthorized' },
+        403: { $ref: '#/components/responses/Forbidden' },
+        404: { $ref: '#/components/responses/NotFound' },
         500: { $ref: '#/components/responses/InternalError' },
       },
     },
