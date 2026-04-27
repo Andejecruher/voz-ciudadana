@@ -94,12 +94,7 @@ export class ConversationsController {
       const { id } = IdParam.parse(req.params);
       const data = TransferBody.parse(req.body);
 
-      const result = await this.service.transfer(
-        id,
-        data.toUserId,
-        req.user?.id,
-        data.departmentSlug,
-      );
+      const result = await this.service.transfer(id, data.toUserId, data.departmentSlug);
 
       await this.audit.logFromRequest(req, {
         actorId: req.user?.id,

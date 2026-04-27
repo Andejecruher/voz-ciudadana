@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { ConversationsController } from '../controllers/conversations.controller';
 import { jwtMiddleware } from '../middlewares/jwt.middleware';
 
-export function createConversationsRouter(controller: ConversationsController) {
+export function createConversationsRouter(controller: ConversationsController): Router {
   const router = Router();
 
   router.use(jwtMiddleware);

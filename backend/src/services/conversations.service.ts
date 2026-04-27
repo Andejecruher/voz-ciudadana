@@ -86,12 +86,7 @@ export class ConversationsService {
   }
 
   /** Transfiere la conversación a otro agente sin forzar cambio de estado. */
-  async transfer(
-    conversationId: string,
-    toUserId: string,
-    performedBy?: string,
-    departmentSlug?: string,
-  ) {
+  async transfer(conversationId: string, toUserId: string, departmentSlug?: string) {
     const ctx = await this.conversationRepo.getConversationContext(conversationId);
     if (!ctx?.meta) throw AppError.notFound('Conversación no encontrada');
 

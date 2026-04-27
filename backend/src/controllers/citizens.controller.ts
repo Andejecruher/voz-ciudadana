@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from 'express';
-import { ZodError } from 'zod';
+import { ZodError, z } from 'zod';
 import type { AuditService } from '../services/audit.service';
 import {
   CitizenIdParamSchema,

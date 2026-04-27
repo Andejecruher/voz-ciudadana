@@ -8,7 +8,10 @@ import type { CitizensService } from '../services/citizens.service';
 
 const READ_ROLES = ['SUPERADMIN', 'COORDINADOR'] as const;
 
-export function createCitizensRouter(citizensService: CitizensService, audit: AuditService) {
+export function createCitizensRouter(
+  citizensService: CitizensService,
+  audit: AuditService,
+): Router {
   const router = Router();
   const ctrl = new CitizensController(citizensService, audit);
 
