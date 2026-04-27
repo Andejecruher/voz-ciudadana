@@ -42,7 +42,11 @@ export type AuditAction =
   | 'conversation.transfer'
   | 'conversation.handover'
   | 'conversation.close'
-  | 'conversation.reopen';
+  | 'conversation.reopen'
+  | 'event.create'
+  | 'event.update'
+  | 'citizen.register_event'
+  | 'citizen.checkin_event';
 
 export interface AuditEntry {
   actorId?: string | null;

@@ -676,6 +676,198 @@ const schemas: Record<string, SchemaObject> = {
       },
     },
   },
+  // ── Eventos ciudadanos ──────────────────────────────────────────────────────
+  EventStatus: {
+    type: 'string',
+    enum: ['draft', 'published', 'completed', 'cancelled'],
+    description: 'Estado del evento',
+    example: 'published',
+  },
+  EventType: {
+    type: 'string',
+    enum: ['townhall', 'community', 'volunteer', 'campaign', 'rally'],
+    description: 'Tipo de evento',
+    example: 'townhall',
+  },
+  RegistrationStatus: {
+    type: 'string',
+    enum: ['invited', 'registered', 'confirmed', 'cancelled', 'waitlist'],
+    description: 'Estado del registro del ciudadano al evento',
+    example: 'registered',
+  },
+  AttendanceStatus: {
+    type: 'string',
+    enum: ['pending', 'attended', 'no_show'],
+    description: 'Estado de asistencia del ciudadano al evento',
+    example: 'attended',
+  },
+  EventRecord: {
+    type: 'object',
+    required: ['id', 'title', 'slug', 'eventType', 'status', 'startsAt', 'createdAt', 'updatedAt'],
+    properties: {
+      id: { type: 'string', format: 'uuid' },
+      title: { type: 'string', maxLength: 255, example: 'Asamblea vecinal 2026' },
+      slug: { type: 'string', example: 'asamblea-vecinal-2026' },
+      description: { type: 'string', nullable: true, example: 'Encuentro con vecinos del centro' },
+      eventType: { $ref: '#/components/schemas/EventType' },
+      status: { $ref: '#/components/schemas/EventStatus' },
+      startsAt: { type: 'string', format: 'date-time', example: '2026-05-10T18:00:00.000Z' },
+      endsAt: { type: 'string', format: 'date-time', nullable: true },
+      locationName: { type: 'string', nullable: true, example: 'Salón Municipal' },
+      address: { type: 'string', nullable: true, example: 'Av. Rivadavia 1234' },
+      latitude: { type: 'string', nullable: true, example: '-34.6037' },
+      longitude: { type: 'string', nullable: true, example: '-58.3816' },
+      capacity: { type: 'integer', nullable: true, example: 100 },
+      organizerUserId: { type: 'string', format: 'uuid', nullable: true },
+      createdAt: { type: 'string', format: 'date-time' },
+      updatedAt: { type: 'string', format: 'date-time' },
+    },
+  },
+  CreateEventRequest: {
+    type: 'object',
+    required: ['title', 'startsAt'],
+    properties: {
+      title: { type: 'string', minLength: 2, maxLength: 255, example: 'Asamblea vecinal 2026' },
+      slug: {
+        type: 'string',
+        pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$',
+        description: 'Si se omite se genera automáticamente desde el título',
+        example: 'asamblea-vecinal-2026',
+      },
+      description: {
+        type: 'string',
+        maxLength: 10000,
+        example: 'Encuentro con vecinos del centro',
+      },
+      eventType: { $ref: '#/components/schemas/EventType' },
+      status: { $ref: '#/components/schemas/EventStatus' },
+      startsAt: { type: 'string', format: 'date-time', example: '2026-05-10T18:00:00.000Z' },
+      endsAt: { type: 'string', format: 'date-time', nullable: true },
+      locationName: { type: 'string', maxLength: 255, example: 'Salón Municipal' },
+      address: { type: 'string', maxLength: 500, example: 'Av. Rivadavia 1234' },
+      latitude: { type: 'number', minimum: -90, maximum: 90, example: -34.6037 },
+      longitude: { type: 'number', minimum: -180, maximum: 180, example: -58.3816 },
+      capacity: { type: 'integer', minimum: 1, example: 100 },
+      organizerUserId: { type: 'string', format: 'uuid' },
+    },
+  },
+  UpdateEventRequest: {
+    type: 'object',
+    description: 'Al menos un campo debe estar presente',
+    properties: {
+      title: {
+        type: 'string',
+        minLength: 2,
+        maxLength: 255,
+        example: 'Asamblea vecinal 2026 (actualizado)',
+      },
+      slug: { type: 'string', pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$' },
+      description: { type: 'string', maxLength: 10000 },
+      eventType: { $ref: '#/components/schemas/EventType' },
+      status: { $ref: '#/components/schemas/EventStatus' },
+      startsAt: { type: 'string', format: 'date-time' },
+      endsAt: { type: 'string', format: 'date-time' },
+      locationName: { type: 'string', maxLength: 255 },
+      address: { type: 'string', maxLength: 500 },
+      latitude: { type: 'number', minimum: -90, maximum: 90 },
+      longitude: { type: 'number', minimum: -180, maximum: 180 },
+      capacity: { type: 'integer', minimum: 1 },
+      organizerUserId: { type: 'string', format: 'uuid' },
+    },
+  },
+  InviteEventRequest: {
+    type: 'object',
+    required: ['message'],
+    description: 'Al menos tagIds o neighborhoodIds debe estar presente',
+    properties: {
+      message: {
+        type: 'string',
+        minLength: 1,
+        maxLength: 1024,
+        example: '¡Te invitamos a la asamblea vecinal del 10 de mayo en el Salón Municipal!',
+      },
+      tagIds: {
+        type: 'array',
+        items: { type: 'string', format: 'uuid' },
+        description: 'IDs de etiquetas para filtrar ciudadanos',
+        minItems: 1,
+      },
+      neighborhoodIds: {
+        type: 'array',
+        items: { type: 'string', format: 'uuid' },
+        description: 'IDs de barrios para filtrar ciudadanos',
+        minItems: 1,
+      },
+    },
+  },
+  InviteEventResponse: {
+    type: 'object',
+    required: ['result'],
+    properties: {
+      result: {
+        type: 'object',
+        required: ['queued', 'alreadyInvited'],
+        properties: {
+          queued: { type: 'integer', example: 42, description: 'Invitaciones enviadas a la cola' },
+          alreadyInvited: {
+            type: 'integer',
+            example: 8,
+            description: 'Ciudadanos ya con registro activo',
+          },
+        },
+      },
+    },
+  },
+  RegistrationCitizen: {
+    type: 'object',
+    required: ['id', 'name', 'phone'],
+    properties: {
+      id: { type: 'string', format: 'uuid' },
+      name: { type: 'string', example: 'Ana García' },
+      phone: { type: 'string', example: '+5491123456789' },
+    },
+  },
+  EventRegistrationRecord: {
+    type: 'object',
+    required: [
+      'id',
+      'eventId',
+      'citizenId',
+      'registrationStatus',
+      'attendanceStatus',
+      'sourceChannel',
+      'createdAt',
+      'updatedAt',
+      'citizen',
+    ],
+    properties: {
+      id: { type: 'string', format: 'uuid' },
+      eventId: { type: 'string', format: 'uuid' },
+      citizenId: { type: 'string', format: 'uuid' },
+      registrationStatus: { $ref: '#/components/schemas/RegistrationStatus' },
+      attendanceStatus: { $ref: '#/components/schemas/AttendanceStatus' },
+      checkedInAt: { type: 'string', format: 'date-time', nullable: true },
+      sourceChannel: { type: 'string', example: 'web' },
+      notes: { type: 'string', nullable: true },
+      createdAt: { type: 'string', format: 'date-time' },
+      updatedAt: { type: 'string', format: 'date-time' },
+      citizen: { $ref: '#/components/schemas/RegistrationCitizen' },
+    },
+  },
+  RegisterEventRequest: {
+    type: 'object',
+    required: ['citizenId'],
+    properties: {
+      citizenId: { type: 'string', format: 'uuid', description: 'ID del ciudadano a registrar' },
+      notes: { type: 'string', maxLength: 1000, description: 'Notas opcionales del operador' },
+    },
+  },
+  CheckInEventRequest: {
+    type: 'object',
+    properties: {
+      notes: { type: 'string', maxLength: 1000, description: 'Notas opcionales del operador' },
+    },
+  },
 };
 
 // ─── Responses reutilizables ──────────────────────────────────────────────────
@@ -3167,6 +3359,430 @@ const paths: PathsObject = {
           },
         },
         401: { $ref: '#/components/responses/Unauthorized' },
+        404: { $ref: '#/components/responses/NotFound' },
+        500: { $ref: '#/components/responses/InternalError' },
+      },
+    },
+  },
+
+  // ── Eventos ciudadanos ──────────────────────────────────────────────────────
+  '/api/v1/admin/events': {
+    get: {
+      tags: ['Eventos'],
+      summary: 'Listar eventos',
+      description: 'Devuelve la lista paginada de eventos. Roles: SUPERADMIN, COORDINADOR.',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          name: 'cursor',
+          in: 'query',
+          schema: { type: 'string', format: 'uuid' },
+          description: 'Cursor de paginación',
+        },
+        { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+        { name: 'status', in: 'query', schema: { $ref: '#/components/schemas/EventStatus' } },
+        { name: 'eventType', in: 'query', schema: { $ref: '#/components/schemas/EventType' } },
+        {
+          name: 'search',
+          in: 'query',
+          schema: { type: 'string' },
+          description: 'Búsqueda en title/slug/description/locationName',
+        },
+        { name: 'organizerUserId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+      ],
+      responses: {
+        200: {
+          description: 'Lista de eventos',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  events: { type: 'array', items: { $ref: '#/components/schemas/EventRecord' } },
+                  meta: { $ref: '#/components/schemas/CursorPaginationMeta' },
+                },
+              },
+            },
+          },
+        },
+        400: {
+          description: 'Parámetros inválidos',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ValidationErrorResponse' },
+            },
+          },
+        },
+        401: { $ref: '#/components/responses/Unauthorized' },
+        403: { $ref: '#/components/responses/Forbidden' },
+        500: { $ref: '#/components/responses/InternalError' },
+      },
+    },
+    post: {
+      tags: ['Eventos'],
+      summary: 'Crear evento',
+      description: 'Crea un nuevo evento ciudadano. Roles: SUPERADMIN, COORDINADOR.',
+      security: [{ bearerAuth: [] }],
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': { schema: { $ref: '#/components/schemas/CreateEventRequest' } },
+        },
+      },
+      responses: {
+        201: {
+          description: 'Evento creado',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: { event: { $ref: '#/components/schemas/EventRecord' } },
+              },
+            },
+          },
+        },
+        400: {
+          description: 'Datos inválidos',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ValidationErrorResponse' },
+            },
+          },
+        },
+        401: { $ref: '#/components/responses/Unauthorized' },
+        403: { $ref: '#/components/responses/Forbidden' },
+        409: {
+          description: 'Slug duplicado',
+          content: {
+            'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+          },
+        },
+        500: { $ref: '#/components/responses/InternalError' },
+      },
+    },
+  },
+  '/api/v1/admin/events/{id}': {
+    get: {
+      tags: ['Eventos'],
+      summary: 'Obtener evento por ID',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+      ],
+      responses: {
+        200: {
+          description: 'Evento',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: { event: { $ref: '#/components/schemas/EventRecord' } },
+              },
+            },
+          },
+        },
+        401: { $ref: '#/components/responses/Unauthorized' },
+        403: { $ref: '#/components/responses/Forbidden' },
+        404: { $ref: '#/components/responses/NotFound' },
+        500: { $ref: '#/components/responses/InternalError' },
+      },
+    },
+    patch: {
+      tags: ['Eventos'],
+      summary: 'Actualizar evento',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+      ],
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': { schema: { $ref: '#/components/schemas/UpdateEventRequest' } },
+        },
+      },
+      responses: {
+        200: {
+          description: 'Evento actualizado',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: { event: { $ref: '#/components/schemas/EventRecord' } },
+              },
+            },
+          },
+        },
+        400: {
+          description: 'Datos inválidos',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ValidationErrorResponse' },
+            },
+          },
+        },
+        401: { $ref: '#/components/responses/Unauthorized' },
+        403: { $ref: '#/components/responses/Forbidden' },
+        404: { $ref: '#/components/responses/NotFound' },
+        409: {
+          description: 'Slug duplicado',
+          content: {
+            'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+          },
+        },
+        500: { $ref: '#/components/responses/InternalError' },
+      },
+    },
+  },
+  '/api/v1/admin/events/{id}/invite': {
+    post: {
+      tags: ['Eventos'],
+      summary: 'Enviar invitaciones masivas',
+      description:
+        'Invita a ciudadanos segmentados por tags y/o barrios. Crea registros como invited y encola mensajes WhatsApp.',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+      ],
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': { schema: { $ref: '#/components/schemas/InviteEventRequest' } },
+        },
+      },
+      responses: {
+        200: {
+          description: 'Resultado del envío',
+          content: {
+            'application/json': { schema: { $ref: '#/components/schemas/InviteEventResponse' } },
+          },
+        },
+        400: {
+          description: 'Datos inválidos o evento cancelado/completado',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ValidationErrorResponse' },
+            },
+          },
+        },
+        401: { $ref: '#/components/responses/Unauthorized' },
+        403: { $ref: '#/components/responses/Forbidden' },
+        404: { $ref: '#/components/responses/NotFound' },
+        500: { $ref: '#/components/responses/InternalError' },
+      },
+    },
+  },
+  '/api/v1/admin/events/{id}/registrations': {
+    post: {
+      tags: ['Eventos — Asistencia'],
+      summary: 'Registrar ciudadano en evento',
+      description: 'Registra a un ciudadano. Si el evento está lleno, se crea en estado waitlist.',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+      ],
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': { schema: { $ref: '#/components/schemas/RegisterEventRequest' } },
+        },
+      },
+      responses: {
+        201: {
+          description: 'Registro creado',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  registration: { $ref: '#/components/schemas/EventRegistrationRecord' },
+                },
+              },
+            },
+          },
+        },
+        400: {
+          description: 'Evento cancelado/completado o datos inválidos',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ValidationErrorResponse' },
+            },
+          },
+        },
+        401: { $ref: '#/components/responses/Unauthorized' },
+        403: { $ref: '#/components/responses/Forbidden' },
+        404: { $ref: '#/components/responses/NotFound' },
+        409: {
+          description: 'El ciudadano ya tiene un registro activo',
+          content: {
+            'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+          },
+        },
+        500: { $ref: '#/components/responses/InternalError' },
+      },
+    },
+    get: {
+      tags: ['Eventos — Asistencia'],
+      summary: 'Listar registros de un evento',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+        { name: 'cursor', in: 'query', schema: { type: 'string', format: 'uuid' } },
+        { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+        {
+          name: 'registrationStatus',
+          in: 'query',
+          schema: { $ref: '#/components/schemas/RegistrationStatus' },
+        },
+        {
+          name: 'attendanceStatus',
+          in: 'query',
+          schema: { $ref: '#/components/schemas/AttendanceStatus' },
+        },
+      ],
+      responses: {
+        200: {
+          description: 'Lista de registros',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  registrations: {
+                    type: 'array',
+                    items: { $ref: '#/components/schemas/EventRegistrationRecord' },
+                  },
+                  meta: { $ref: '#/components/schemas/CursorPaginationMeta' },
+                },
+              },
+            },
+          },
+        },
+        401: { $ref: '#/components/responses/Unauthorized' },
+        403: { $ref: '#/components/responses/Forbidden' },
+        404: { $ref: '#/components/responses/NotFound' },
+        500: { $ref: '#/components/responses/InternalError' },
+      },
+    },
+  },
+  '/api/v1/admin/events/{id}/registrations/{registrationId}/confirm': {
+    patch: {
+      tags: ['Eventos — Asistencia'],
+      summary: 'Confirmar asistencia de un ciudadano',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+        {
+          name: 'registrationId',
+          in: 'path',
+          required: true,
+          schema: { type: 'string', format: 'uuid' },
+        },
+      ],
+      responses: {
+        200: {
+          description: 'Registro confirmado',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  registration: { $ref: '#/components/schemas/EventRegistrationRecord' },
+                },
+              },
+            },
+          },
+        },
+        400: {
+          description: 'Estado de registro inválido para confirmar',
+          content: {
+            'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+          },
+        },
+        401: { $ref: '#/components/responses/Unauthorized' },
+        403: { $ref: '#/components/responses/Forbidden' },
+        404: { $ref: '#/components/responses/NotFound' },
+        500: { $ref: '#/components/responses/InternalError' },
+      },
+    },
+  },
+  '/api/v1/admin/events/{id}/registrations/{registrationId}/checkin': {
+    post: {
+      tags: ['Eventos — Asistencia'],
+      summary: 'Check-in de un ciudadano',
+      description:
+        'Marca al ciudadano como asistente. Solo para registros en estado registered/confirmed.',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+        {
+          name: 'registrationId',
+          in: 'path',
+          required: true,
+          schema: { type: 'string', format: 'uuid' },
+        },
+      ],
+      requestBody: {
+        content: {
+          'application/json': { schema: { $ref: '#/components/schemas/CheckInEventRequest' } },
+        },
+      },
+      responses: {
+        200: {
+          description: 'Check-in registrado',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  registration: { $ref: '#/components/schemas/EventRegistrationRecord' },
+                },
+              },
+            },
+          },
+        },
+        400: {
+          description: 'Estado de registro inválido para check-in',
+          content: {
+            'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+          },
+        },
+        401: { $ref: '#/components/responses/Unauthorized' },
+        403: { $ref: '#/components/responses/Forbidden' },
+        404: { $ref: '#/components/responses/NotFound' },
+        500: { $ref: '#/components/responses/InternalError' },
+      },
+    },
+  },
+  '/api/v1/admin/events/{id}/attendees': {
+    get: {
+      tags: ['Eventos — Asistencia'],
+      summary: 'Listar asistentes (check-in realizado)',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+        { name: 'cursor', in: 'query', schema: { type: 'string', format: 'uuid' } },
+        { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+      ],
+      responses: {
+        200: {
+          description: 'Asistentes del evento',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  attendees: {
+                    type: 'array',
+                    items: { $ref: '#/components/schemas/EventRegistrationRecord' },
+                  },
+                  meta: { $ref: '#/components/schemas/CursorPaginationMeta' },
+                },
+              },
+            },
+          },
+        },
+        401: { $ref: '#/components/responses/Unauthorized' },
+        403: { $ref: '#/components/responses/Forbidden' },
         404: { $ref: '#/components/responses/NotFound' },
         500: { $ref: '#/components/responses/InternalError' },
       },

@@ -1,6 +1,5 @@
 generator client {
   provider = "prisma-client-js"
-  output   = "../node_modules/.prisma/client"
 }
 
 datasource db {
@@ -86,6 +85,8 @@ model User {
   assignedCitizenTags   CitizenTag[]   @relation("CitizenTagAssignedBy")
   uploadedAttachments   Attachment[]   @relation("AttachmentUploadedBy")
   assignments           Assignment[]   @relation("AssignmentUser")
+  organizedEvents       Event[]        @relation("EventOrganizer")
+  eventCheckins         EventCheckin[] @relation("EventCheckinByUser")
 
   @@index([email])
   @@map("users")
@@ -153,9 +154,10 @@ model Citizen {
 
   neighborhoodRef Neighborhood? @relation(fields: [neighborhoodId], references: [id], onDelete: SetNull)
 
-  conversations Conversation[]
-  citizenTags   CitizenTag[]
-  attachments   Attachment[]
+  conversations      Conversation[]
+  citizenTags        CitizenTag[]
+  attachments        Attachment[]
+  eventRegistrations EventRegistration[]
 
   @@index([phone])
   @@index([email])
@@ -438,6 +440,118 @@ model Department {
   @@index([slug])
   @@index([isActive])
   @@map("departments")
+}
+
+// ── Eventos ciudadanos ────────────────────────────────────────────────────────
+
+enum EventStatus {
+  draft
+  published
+  completed
+  cancelled
+
+  @@map("event_status")
+}
+
+enum EventType {
+  townhall
+  community
+  volunteer
+  campaign
+  rally
+
+  @@map("event_type")
+}
+
+enum RegistrationStatus {
+  invited
+  registered
+  confirmed
+  cancelled
+  waitlist
+
+  @@map("registration_status")
+}
+
+enum AttendanceStatus {
+  pending
+  attended
+  no_show
+
+  @@map("attendance_status")
+}
+
+/// Evento ciudadano organizado por el panel administrativo.
+model Event {
+  id              String      @id @default(uuid()) @db.Uuid
+  title           String      @db.VarChar(255)
+  slug            String      @unique @db.VarChar(255)
+  description     String?     @db.Text
+  eventType       EventType   @default(townhall) @map("event_type")
+  status          EventStatus @default(draft)
+  startsAt        DateTime    @map("starts_at") @db.Timestamptz(6)
+  endsAt          DateTime?   @map("ends_at") @db.Timestamptz(6)
+  locationName    String?     @map("location_name") @db.VarChar(255)
+  address         String?     @db.VarChar(500)
+  latitude        Decimal?    @db.Decimal(10, 7)
+  longitude       Decimal?    @db.Decimal(10, 7)
+  capacity        Int?
+  organizerUserId String?     @map("organizer_user_id") @db.Uuid
+  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organizer     User?               @relation("EventOrganizer", fields: [organizerUserId], references: [id], onDelete: SetNull)
+  registrations EventRegistration[]
+  checkins      EventCheckin[]
+
+  @@index([status])
+  @@index([startsAt])
+  @@index([organizerUserId])
+  @@map("events")
+}
+
+/// Registro de un ciudadano a un evento (RSVP + asistencia).
+/// Un ciudadano solo puede tener un registro por evento.
+model EventRegistration {
+  id                 String             @id @default(uuid()) @db.Uuid
+  eventId            String             @map("event_id") @db.Uuid
+  citizenId          String             @map("citizen_id") @db.Uuid
+  registrationStatus RegistrationStatus @default(registered) @map("registration_status")
+  attendanceStatus   AttendanceStatus   @default(pending) @map("attendance_status")
+  checkedInAt        DateTime?          @map("checked_in_at") @db.Timestamptz(6)
+  sourceChannel      SourceChannel      @default(web) @map("source_channel")
+  notes              String?            @db.Text
+  createdAt          DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  event    Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  citizen  Citizen @relation(fields: [citizenId], references: [id], onDelete: Cascade)
+  checkins EventCheckin[]
+
+  @@unique([eventId, citizenId], map: "uq_event_registrations_event_citizen")
+  @@index([eventId])
+  @@index([citizenId])
+  @@index([registrationStatus])
+  @@map("event_registrations")
+}
+
+/// Trazabilidad de check-ins para un registro de evento.
+/// Permite múltiples check-ins por registro (reintentos/correcciones de staff).
+model EventCheckin {
+  id             String   @id @default(uuid()) @db.Uuid
+  eventId        String   @map("event_id") @db.Uuid
+  registrationId String   @map("registration_id") @db.Uuid
+  checkedInBy    String?  @map("checked_in_by") @db.Uuid
+  notes          String?  @db.Text
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  event        Event             @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  registration EventRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  checkedInByUser User?          @relation("EventCheckinByUser", fields: [checkedInBy], references: [id], onDelete: SetNull)
+
+  @@index([eventId])
+  @@index([registrationId])
+  @@map("event_checkins")
 }
 
 /// Asignaciones de conversaciones a agentes humanos.

@@ -8,12 +8,14 @@ import { ConversationsController } from '../controllers/conversations.controller
 import { HandoverController } from '../controllers/handover.controller';
 import { MessagesController } from '../controllers/messages.controller';
 import { WebhookController } from '../controllers/webhook.controller';
+import { AttendanceService } from '../services/attendance.service';
 import { AuditService } from '../services/audit.service';
 import { AuthService } from '../services/auth.service';
 import { BotService } from '../services/bot.service';
 import { CitizensService } from '../services/citizens.service';
 import { ConversationsService } from '../services/conversations.service';
 import { DepartmentsService } from '../services/departments.service';
+import { EventService } from '../services/event.service';
 import { InboxProcessorService } from '../services/events/inbox-processor.service';
 import { OutboxProcessorService } from '../services/events/outbox-processor.service';
 import { LockoutService } from '../services/lockout.service';
@@ -33,6 +35,7 @@ import { createAuthRouter } from './auth.routes';
 import { createCitizensRouter } from './citizens.routes';
 import { createConversationsRouter } from './conversations.routes';
 import { createDepartmentsRouter } from './departments.routes';
+import { createEventsRouter } from './events.routes';
 import { createHandoverRouter } from './handover.routes';
 import { createMessagesRouter } from './messages.routes';
 import { createNeighborhoodsRouter } from './neighborhoods.routes';
@@ -60,6 +63,7 @@ export function registerRoutes(app: Express, deps: RouteDependencies): void {
   const systemService = new SystemService(deps.prisma, deps.redis);
   const citizensService = new CitizensService(deps.prisma);
   const departmentsService = new DepartmentsService(deps.prisma);
+  const attendanceService = new AttendanceService(deps.prisma);
 
   // ── Messaging Core ─────────────────────────────────────────────────────────
   const webhookParser = new WebhookParserService();
@@ -88,6 +92,8 @@ export function registerRoutes(app: Express, deps: RouteDependencies): void {
   // Iniciar workers
   inboxProcessor.start();
   outboxProcessor.start();
+
+  const eventService = new EventService(deps.prisma, outboxProcessor);
 
   // ── MessageService ─────────────────────────────────────────────────────────
   const messageService = new MessageService(deps.prisma, messageRepo, outboxProcessor, deps.redis);
@@ -121,6 +127,7 @@ export function registerRoutes(app: Express, deps: RouteDependencies): void {
   apiRouter.use('/admin', createTagsRouter(tagsService, auditService));
   apiRouter.use('/citizens', createCitizensRouter(citizensService, auditService));
   apiRouter.use('/admin', createDepartmentsRouter(departmentsService, auditService));
+  apiRouter.use('/admin', createEventsRouter(eventService, attendanceService, auditService));
   apiRouter.use('/messages', createMessagesRouter(messagesController));
   apiRouter.use('/handover', createHandoverRouter(handoverController));
   apiRouter.use('/conversations', createConversationsRouter(conversationsController));

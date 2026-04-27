@@ -49,4 +49,39 @@ export enum ConversationStatus {
 
 export const Prisma = {
   ConversationGetPayload: {},
+  Decimal: class Decimal {
+    constructor(public val: string | number) {}
+    toString(): string {
+      return String(this.val);
+    }
+  },
 };
+
+export enum EventStatus {
+  draft = 'draft',
+  published = 'published',
+  completed = 'completed',
+  cancelled = 'cancelled',
+}
+
+export enum EventType {
+  townhall = 'townhall',
+  community = 'community',
+  volunteer = 'volunteer',
+  campaign = 'campaign',
+  rally = 'rally',
+}
+
+export enum RegistrationStatus {
+  invited = 'invited',
+  registered = 'registered',
+  confirmed = 'confirmed',
+  cancelled = 'cancelled',
+  waitlist = 'waitlist',
+}
+
+export enum AttendanceStatus {
+  pending = 'pending',
+  attended = 'attended',
+  no_show = 'no_show',
+}
