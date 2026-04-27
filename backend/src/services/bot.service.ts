@@ -19,12 +19,21 @@
  * Los datos permanentes se guardan en PostgreSQL via Prisma.
  * Los mensajes outbound se envían via WhatsAppProvider (real).
  */
-import { ConversationStatus, LeadStatus, MessageDirection, SourceChannel } from '@prisma/client';
+import {
+  ConversationStatus,
+  LeadStatus,
+  MessageDirection,
+  MessageType,
+  SourceChannel,
+} from '@prisma/client';
 import * as crypto from 'crypto';
 import { WhatsAppTextMessage, WhatsAppWebhookPayload } from '../types/types';
-import { normalizePhoneForStorage } from '../utils/phone-normalizer';
+import { WaTextOutbound } from '../types/whatsapp.types';
+import { normalizePhone, normalizePhoneForStorage } from '../utils/phone-normalizer';
+import { OutboxProcessorService } from './events/outbox-processor.service';
 import { PrismaService } from './prisma.service';
 import { RedisService } from './redis.service';
+import { MessageRepository } from './repositories/message.repository';
 import { WhatsAppProvider } from './whatsapp/whatsapp.provider';
 
 // ─── Estados de la FSM ────────────────────────────────────────────────────────
@@ -247,7 +256,7 @@ export const FUZZY_THRESHOLD = 0.82;
  * (en lugar de listar múltiples opciones).
  * El top candidato debe superar este umbral Y superar al segundo por al menos FUZZY_GAP.
  */
-export const FUZZY_HIGH_THRESHOLD = 0.90;
+export const FUZZY_HIGH_THRESHOLD = 0.9;
 
 /**
  * Diferencia mínima de score entre el primero y el segundo candidato fuzzy
@@ -282,9 +291,9 @@ export function levenshtein(a: string, b: string): number {
     for (let i = 1; i <= alen; i++) {
       const cost = a[i - 1] === b[j - 1] ? 0 : 1;
       curr[i] = Math.min(
-        curr[i - 1] + 1,      // inserción
-        prev[i] + 1,           // eliminación
-        prev[i - 1] + cost,    // sustitución
+        curr[i - 1] + 1, // inserción
+        prev[i] + 1, // eliminación
+        prev[i - 1] + cost, // sustitución
       );
     }
     prev = curr;
@@ -387,10 +396,7 @@ export function matchNeighborhood(
   const second = scored[1];
 
   // Si el top supera umbral alto y tiene ventaja clara vs el segundo → pedir confirmación única
-  if (
-    top.score >= FUZZY_HIGH_THRESHOLD &&
-    (!second || top.score - second.score >= FUZZY_GAP)
-  ) {
+  if (top.score >= FUZZY_HIGH_THRESHOLD && (!second || top.score - second.score >= FUZZY_GAP)) {
     return {
       type: 'fuzzy_confirm',
       candidate: { id: top.id, name: top.name, score: top.score },
@@ -434,6 +440,8 @@ export class BotService {
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
     private readonly whatsappProvider: WhatsAppProvider,
+    private readonly outboxProcessor?: OutboxProcessorService,
+    private readonly messageRepo?: MessageRepository,
   ) {}
 
   // ─── Punto de entrada del webhook (legacy) ─────────────────────────────────
@@ -465,7 +473,10 @@ export class BotService {
 
           // Fallback para tipos no-texto durante registro
           if (msg.type !== 'text' || !msg.text?.body) {
-            log('debug', 'inbound.non-text', correlationId, { phone: maskPhone(phone), type: msg.type });
+            log('debug', 'inbound.non-text', correlationId, {
+              phone: maskPhone(phone),
+              type: msg.type,
+            });
             await this.handleNonTextMessage(phone, waMessageId, correlationId);
             continue;
           }
@@ -508,7 +519,10 @@ export class BotService {
 
     // Deduplicación por wamid: si ya procesamos este mensaje, skip silencioso
     if (session.lastProcessedWamid === waMessageId) {
-      log('warn', 'inbound.duplicate_wamid', correlationId, { phone: maskPhone(phone), wamid: waMessageId });
+      log('warn', 'inbound.duplicate_wamid', correlationId, {
+        phone: maskPhone(phone),
+        wamid: waMessageId,
+      });
       return;
     }
 
@@ -536,15 +550,18 @@ export class BotService {
         break;
 
       case BotFsmState.COMPLETED:
-        // Ciudadano ya registrado — solo persiste el mensaje y espera agente
-        await this.persistInboundMessage(phone, text, waMessageId);
+        // Ciudadano ya registrado — el orquestador persiste el mensaje inbound (paso 4).
+        // No persistir aquí para evitar duplicados.
         log('info', 'bot.handler.completed_state', correlationId, { phone: maskPhone(phone) });
         break;
 
       default: {
         // Estado desconocido — reset defensivo a NAME
         const unknownState = session.state as string;
-        log('warn', 'bot.fsm.unknown_state', correlationId, { phone: maskPhone(phone), state: unknownState });
+        log('warn', 'bot.fsm.unknown_state', correlationId, {
+          phone: maskPhone(phone),
+          state: unknownState,
+        });
         await this.advanceState(phone, BotFsmState.NAME);
         await this.handleNameState(
           phone,
@@ -577,7 +594,10 @@ export class BotService {
       return;
     }
 
-    log('info', 'bot.non_text_fallback', correlationId, { phone: maskPhone(phone), state: session.state });
+    log('info', 'bot.non_text_fallback', correlationId, {
+      phone: maskPhone(phone),
+      state: session.state,
+    });
     await this.sendMessage(
       phone,
       '⚠️ En este paso del registro solo puedo procesar mensajes de texto. Por favor respondé con texto.',
@@ -1075,12 +1095,25 @@ export class BotService {
   private async ensureOpenConversation(citizenId: string) {
     const existing = await this.prisma.conversation.findFirst({
       where: { citizenId, status: ConversationStatus.open },
+      include: { meta: true },
     });
 
-    if (existing) return existing;
+    if (existing) {
+      // Crear meta si no existe (B4: conversaciones sin meta causan throws en el orquestador)
+      if (!existing.meta) {
+        await this.prisma.conversationMeta.create({
+          data: { conversationId: existing.id },
+        });
+      }
+      return existing;
+    }
 
     return this.prisma.conversation.create({
-      data: { citizenId, status: ConversationStatus.open },
+      data: {
+        citizenId,
+        status: ConversationStatus.open,
+        meta: { create: { flowState: 'BOT_FLOW' } },
+      },
     });
   }
 
@@ -1088,10 +1121,16 @@ export class BotService {
 
   /**
    * Envía un mensaje de texto al ciudadano vía WhatsApp Cloud API.
-   * Usa WhatsAppProvider real para el envío HTTP.
-   * En caso de error, loguea sin lanzar excepción para no interrumpir el flujo FSM.
    *
-   * @param phone         - Número destino en formato E.164
+   * Cuando OutboxProcessorService está disponible (producción):
+   *   1. Busca la conversación abierta del ciudadano
+   *   2. Persiste un Message(direction=outbound) en DB
+   *   3. Encola OutboxEvent → el worker maneja el HTTP call con retry
+   *
+   * Cuando OutboxProcessorService no está disponible (modo legacy/test):
+   *   Envía directamente via WhatsAppProvider (comportamiento anterior).
+   *
+   * @param phone         - Número destino en formato DB canónico (sin +)
    * @param text          - Texto del mensaje a enviar
    * @param correlationId - ID de correlación para trazabilidad
    */
@@ -1104,7 +1143,6 @@ export class BotService {
         limit: WA_MAX_TEXT_LENGTH,
         preview: text.substring(0, 120),
       });
-      // Fallback compacto: avisar al ciudadano sin romper el flujo FSM
       const fallback =
         '⚠️ Tuvimos un problema mostrando la lista completa. Por favor escribí el nombre de tu colonia o escribí "lista" para ver las opciones.';
       try {
@@ -1124,6 +1162,46 @@ export class BotService {
       preview: text.substring(0, 80),
     });
 
+    // ── Ruta producción: outbox + persistencia ────────────────────────────
+    if (this.outboxProcessor) {
+      // Buscar conversación activa del ciudadano para vincular el mensaje
+      const conv = await this.prisma.conversation.findFirst({
+        where: { citizen: { phone }, status: ConversationStatus.open },
+        select: { id: true },
+      });
+
+      // Persistir mensaje outbound en historial de la conversación
+      if (this.messageRepo && conv) {
+        await this.messageRepo.create({
+          conversationId: conv.id,
+          body: text,
+          direction: MessageDirection.outbound,
+          messageType: MessageType.text,
+          meta: { source: 'bot' },
+        });
+      }
+
+      // Construir payload WhatsApp y encolar.
+      // normalizePhone garantiza formato E.164 con + requerido por la Meta Cloud API.
+      const waPayload: WaTextOutbound = {
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to: normalizePhone(phone),
+        type: 'text',
+        text: { body: text, preview_url: false },
+      };
+      const idempotencyKey = `bot:${phone}:${crypto.randomUUID()}`;
+
+      await this.outboxProcessor.enqueue(phone, waPayload, idempotencyKey, conv?.id);
+
+      log('info', 'bot.reply.enqueued', correlationId, {
+        phone: maskPhone(phone),
+        conversationId: conv?.id,
+      });
+      return;
+    }
+
+    // ── Ruta legacy/test: envío directo (sin outbox) ──────────────────────
     try {
       const result = await this.whatsappProvider.sendText(phone, text);
       log('info', 'bot.reply.sent', correlationId, {

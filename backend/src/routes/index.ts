@@ -51,7 +51,6 @@ export function registerRoutes(app: Express, deps: RouteDependencies): void {
 
   // ── Servicios base ─────────────────────────────────────────────────────────
   const whatsappProvider = new WhatsAppProvider(deps.redis);
-  const botService = new BotService(deps.prisma, deps.redis, whatsappProvider);
   const lockoutService = new LockoutService(deps.redis);
   const auditService = new AuditService(deps.prisma);
   const authService = new AuthService(deps.prisma, deps.redis, lockoutService);
@@ -68,13 +67,23 @@ export function registerRoutes(app: Express, deps: RouteDependencies): void {
   const conversationRepo = new ConversationRepository(deps.prisma);
   const stateMachine = new ConversationStateMachine(conversationRepo);
 
+  // outboxProcessor se crea antes de botService para inyectarlo como dep
+  const outboxProcessor = new OutboxProcessorService(deps.prisma, deps.redis, whatsappProvider);
+
+  const botService = new BotService(
+    deps.prisma,
+    deps.redis,
+    whatsappProvider,
+    outboxProcessor,
+    messageRepo,
+  );
+
   const inboxProcessor = new InboxProcessorService(
     deps.prisma,
     deps.redis,
     whatsappProvider,
     botService,
   );
-  const outboxProcessor = new OutboxProcessorService(deps.prisma, deps.redis, whatsappProvider);
 
   // Iniciar workers
   inboxProcessor.start();
