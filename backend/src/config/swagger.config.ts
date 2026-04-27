@@ -110,7 +110,7 @@ const schemas: Record<string, SchemaObject> = {
     required: ['id', 'email', 'roles'],
     properties: {
       id: { type: 'string', format: 'uuid', example: '550e8400-e29b-41d4-a716-446655440000' },
-      email: { type: 'string', format: 'email', example: 'admin@vozciudadana.gob' },
+      email: { type: 'string', format: 'email', example: 'admin@vozcuidadana.mx' },
       fullName: { type: 'string', nullable: true, example: 'Ana García' },
       roles: { type: 'array', items: { $ref: '#/components/schemas/PanelRole' } },
       isActive: { type: 'boolean', description: 'Presente en respuestas de admin', example: true },
@@ -126,8 +126,8 @@ const schemas: Record<string, SchemaObject> = {
     type: 'object',
     required: ['email', 'password'],
     properties: {
-      email: { type: 'string', format: 'email', example: 'admin@vozciudadana.gob' },
-      password: { type: 'string', minLength: 1, example: 'MiPassword123!' },
+      email: { type: 'string', format: 'email', example: 'admin@vozcuidadana.mx' },
+      password: { type: 'string', minLength: 1, example: 'changeme_in_production_123!' },
       deviceId: {
         type: 'string',
         description: 'Identificador estable del dispositivo',
@@ -158,7 +158,7 @@ const schemas: Record<string, SchemaObject> = {
     type: 'object',
     required: ['email', 'password', 'fullName', 'roles'],
     properties: {
-      email: { type: 'string', format: 'email', example: 'nuevo.admin@vozciudadana.gob' },
+      email: { type: 'string', format: 'email', example: 'nuevo.admin@vozcuidadana.mx' },
       password: { type: 'string', minLength: 8, example: 'PasswordSeguro123!' },
       fullName: { type: 'string', minLength: 2, example: 'Carlos Rodríguez' },
       roles: {
@@ -415,6 +415,176 @@ const schemas: Record<string, SchemaObject> = {
     type: 'object',
     properties: { ok: { type: 'boolean' } },
   },
+  MessageType: {
+    type: 'string',
+    enum: [
+      'text',
+      'image',
+      'audio',
+      'video',
+      'document',
+      'location',
+      'template',
+      'interactive',
+      'system',
+    ],
+    description: 'Tipo de mensaje',
+    example: 'text',
+  },
+  MessageStatusValue: {
+    type: 'string',
+    enum: ['sent', 'delivered', 'read', 'failed'],
+    description: 'Estado de entrega de un mensaje outbound',
+    example: 'delivered',
+  },
+  MessageDeliveryStatus: {
+    type: 'object',
+    required: ['id', 'messageId', 'wamid', 'status', 'timestamp'],
+    properties: {
+      id: { type: 'string', format: 'uuid' },
+      messageId: { type: 'string', format: 'uuid' },
+      wamid: { type: 'string', example: 'wamid.HBgLNTQ5...AA' },
+      status: { $ref: '#/components/schemas/MessageStatusValue' },
+      errorCode: { type: 'integer', nullable: true, example: null },
+      errorTitle: { type: 'string', nullable: true, example: null },
+      timestamp: { type: 'string', format: 'date-time' },
+      createdAt: { type: 'string', format: 'date-time' },
+    },
+  },
+  AttachmentRecord: {
+    type: 'object',
+    required: ['id', 'storageKey', 'mimeType', 'fileSizeBytes', 'createdAt'],
+    properties: {
+      id: { type: 'string', format: 'uuid' },
+      storageKey: { type: 'string', example: 'uploads/2026/04/documento.pdf' },
+      mimeType: { type: 'string', example: 'application/pdf' },
+      fileSizeBytes: {
+        type: 'string',
+        description: 'Tamaño en bytes (string para precisión BigInt)',
+        example: '98765',
+      },
+      originalFilename: { type: 'string', nullable: true, example: 'documento.pdf' },
+      cdnUrl: { type: 'string', nullable: true, example: 'https://cdn.example.com/documento.pdf' },
+      messageId: { type: 'string', format: 'uuid', nullable: true },
+      uploadedBy: { type: 'string', format: 'uuid', nullable: true },
+      createdAt: { type: 'string', format: 'date-time' },
+    },
+  },
+  MessageRecord: {
+    type: 'object',
+    required: ['id', 'conversationId', 'body', 'direction', 'messageType', 'createdAt'],
+    properties: {
+      id: { type: 'string', format: 'uuid' },
+      conversationId: { type: 'string', format: 'uuid' },
+      body: { type: 'string', example: 'Hola, ¿en qué te puedo ayudar?' },
+      direction: {
+        type: 'string',
+        enum: ['inbound', 'outbound'],
+        example: 'outbound',
+      },
+      messageType: { $ref: '#/components/schemas/MessageType' },
+      externalMessageId: { type: 'string', nullable: true, example: 'wamid.HBgLNTQ5...AA' },
+      meta: { type: 'object', description: 'Metadata adicional del mensaje', example: {} },
+      createdAt: { type: 'string', format: 'date-time' },
+      statuses: {
+        type: 'array',
+        items: { $ref: '#/components/schemas/MessageDeliveryStatus' },
+        description: 'Timeline de estados de entrega (solo mensajes outbound)',
+      },
+      attachmentsViaMessageId: {
+        type: 'array',
+        items: { $ref: '#/components/schemas/AttachmentRecord' },
+        description: 'Attachments vinculados a este mensaje',
+      },
+    },
+  },
+  MessageListResponse: {
+    type: 'object',
+    required: ['items', 'meta'],
+    properties: {
+      items: {
+        type: 'array',
+        items: { $ref: '#/components/schemas/MessageRecord' },
+      },
+      meta: {
+        type: 'object',
+        required: ['hasNextPage'],
+        properties: {
+          nextCursor: { type: 'string', format: 'uuid', nullable: true },
+          hasNextPage: { type: 'boolean', example: false },
+        },
+      },
+    },
+  },
+  SendConversationMessageRequest: {
+    type: 'object',
+    required: ['body'],
+    properties: {
+      body: {
+        type: 'string',
+        minLength: 1,
+        maxLength: 4096,
+        description: 'Texto del mensaje',
+        example: '¡Hola! Tu solicitud fue recibida.',
+      },
+      messageType: {
+        $ref: '#/components/schemas/MessageType',
+        description: 'Tipo de mensaje (default: text)',
+      },
+    },
+  },
+  SendConversationMessageResponse: {
+    type: 'object',
+    required: ['message', 'idempotencyKey'],
+    properties: {
+      message: { $ref: '#/components/schemas/MessageRecord' },
+      idempotencyKey: {
+        type: 'string',
+        format: 'uuid',
+        description: 'Clave de idempotencia usada (provista o generada automáticamente)',
+        example: '550e8400-e29b-41d4-a716-446655440099',
+      },
+    },
+  },
+  AddAttachmentRequest: {
+    type: 'object',
+    required: ['storageKey', 'mimeType', 'fileSizeBytes'],
+    properties: {
+      storageKey: {
+        type: 'string',
+        minLength: 1,
+        maxLength: 1024,
+        description: 'Ruta del archivo en el storage (S3/GCS/local)',
+        example: 'uploads/2026/04/documento.pdf',
+      },
+      mimeType: {
+        type: 'string',
+        minLength: 1,
+        maxLength: 127,
+        description: 'MIME type del archivo',
+        example: 'application/pdf',
+      },
+      fileSizeBytes: {
+        type: 'string',
+        pattern: '^[0-9]+$',
+        description:
+          'Tamaño en bytes como string numérico (evita pérdida de precisión BigInt en JSON)',
+        example: '98765',
+      },
+      originalFilename: {
+        type: 'string',
+        maxLength: 512,
+        description: 'Nombre original del archivo (opcional)',
+        example: 'documento.pdf',
+      },
+      cdnUrl: {
+        type: 'string',
+        format: 'uri',
+        description: 'URL pública del archivo en CDN (opcional)',
+        example: 'https://cdn.example.com/uploads/documento.pdf',
+      },
+    },
+  },
   SystemConfig: {
     type: 'object',
     properties: {
@@ -565,14 +735,14 @@ const paths: PathsObject = {
               withDevice: {
                 summary: 'Login con device-id en body',
                 value: {
-                  email: 'admin@vozciudadana.gob',
-                  password: 'MiPassword123!',
+                  email: 'admin@vozcuidadana.mx',
+                  password: 'changeme_in_production_123!',
                   deviceId: 'browser-chrome-desktop-uuid',
                 },
               },
               minimal: {
                 summary: 'Login mínimo (sesión anónima)',
-                value: { email: 'admin@vozciudadana.gob', password: 'MiPassword123!' },
+                value: { email: 'admin@vozcuidadana.mx', password: 'changeme_in_production_123!' },
               },
             },
           },
@@ -2267,6 +2437,213 @@ const paths: PathsObject = {
       },
     },
   },
+
+  '/api/v1/conversations/{id}/messages': {
+    get: {
+      tags: ['Conversations'],
+      summary: 'Listar mensajes de una conversación',
+      description: [
+        'Retorna los mensajes de una conversación en orden cronológico ascendente.',
+        'Incluye los estados de entrega (`statuses`) y attachments vinculados.',
+        'Paginación cursor-based — usar `nextCursor` del `meta` de la respuesta anterior.',
+      ].join('\n'),
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          in: 'path',
+          name: 'id',
+          required: true,
+          schema: { type: 'string', format: 'uuid' },
+          description: 'ID de la conversación',
+        },
+        {
+          in: 'query',
+          name: 'cursor',
+          required: false,
+          schema: { type: 'string', format: 'uuid' },
+          description: 'ID del último mensaje recibido (cursor de paginación)',
+        },
+        {
+          in: 'query',
+          name: 'limit',
+          required: false,
+          schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 },
+          description: 'Cantidad de mensajes a retornar',
+        },
+      ],
+      responses: {
+        200: {
+          description: 'Lista de mensajes paginada',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/MessageListResponse' },
+              example: {
+                items: [
+                  {
+                    id: '550e8400-e29b-41d4-a716-446655440010',
+                    conversationId: '550e8400-e29b-41d4-a716-446655440002',
+                    body: 'Hola, necesito ayuda.',
+                    direction: 'inbound',
+                    messageType: 'text',
+                    externalMessageId: 'wamid.HBgLNTQ5...AA',
+                    meta: {},
+                    createdAt: '2026-04-27T10:00:00.000Z',
+                    statuses: [],
+                    attachmentsViaMessageId: [],
+                  },
+                ],
+                meta: { nextCursor: null, hasNextPage: false },
+              },
+            },
+          },
+        },
+        400: {
+          description: 'UUID inválido o parámetros de paginación inválidos',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ValidationErrorResponse' },
+            },
+          },
+        },
+        401: { $ref: '#/components/responses/Unauthorized' },
+        404: { $ref: '#/components/responses/NotFound' },
+        500: { $ref: '#/components/responses/InternalError' },
+      },
+    },
+    post: {
+      tags: ['Conversations'],
+      summary: 'Enviar mensaje outbound desde el dashboard',
+      description: [
+        'El agente autenticado envía un mensaje de texto a la conversación especificada.',
+        '',
+        '**Append-only**: los mensajes no se modifican ni eliminan.',
+        '',
+        '**Idempotencia**: enviar el header `Idempotency-Key` (UUID) garantiza que el mismo mensaje',
+        'no se procese dos veces. Si se repite el key, se retorna el mensaje original con HTTP 200.',
+        'Si no se envía el header, se genera un UUID automáticamente.',
+        '',
+        '**Respuestas**:',
+        '- `202 Accepted` — mensaje nuevo, encolado para envío por WhatsApp.',
+        '- `200 OK` — replay detectado (mismo Idempotency-Key), se retorna el mensaje ya existente.',
+      ].join('\n'),
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          in: 'path',
+          name: 'id',
+          required: true,
+          schema: { type: 'string', format: 'uuid' },
+          description: 'ID de la conversación',
+        },
+        {
+          in: 'header',
+          name: 'Idempotency-Key',
+          required: false,
+          schema: { type: 'string', format: 'uuid' },
+          description:
+            'UUID para garantizar at-most-once delivery. Se genera automáticamente si se omite.',
+          example: '550e8400-e29b-41d4-a716-446655440099',
+        },
+      ],
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: { $ref: '#/components/schemas/SendConversationMessageRequest' },
+          },
+        },
+      },
+      responses: {
+        202: {
+          description: 'Mensaje nuevo encolado para envío vía WhatsApp',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/SendConversationMessageResponse' },
+            },
+          },
+        },
+        200: {
+          description: 'Replay — mensaje ya existente retornado (mismo Idempotency-Key)',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/SendConversationMessageResponse' },
+            },
+          },
+        },
+        400: {
+          description: 'Payload inválido (body vacío, body demasiado largo, UUID inválido)',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ValidationErrorResponse' },
+            },
+          },
+        },
+        401: { $ref: '#/components/responses/Unauthorized' },
+        404: { $ref: '#/components/responses/NotFound' },
+        500: { $ref: '#/components/responses/InternalError' },
+      },
+    },
+  },
+
+  '/api/v1/messages/{id}/attachments': {
+    post: {
+      tags: ['Messages'],
+      summary: 'Registrar attachment sobre un mensaje existente',
+      description: [
+        'Crea un registro de `Attachment` y lo vincula al mensaje indicado.',
+        '',
+        'El cliente es responsable de subir el archivo al storage (S3/GCS/local) y enviar',
+        'los metadatos resultantes (`storageKey`, `mimeType`, `fileSizeBytes`).',
+        '',
+        '`fileSizeBytes` debe enviarse como **string numérico** para evitar pérdida de precisión',
+        'con enteros grandes en JSON (BigInt).',
+      ].join('\n'),
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          in: 'path',
+          name: 'id',
+          required: true,
+          schema: { type: 'string', format: 'uuid' },
+          description: 'ID del mensaje al que se vincula el attachment',
+        },
+      ],
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: { $ref: '#/components/schemas/AddAttachmentRequest' },
+          },
+        },
+      },
+      responses: {
+        201: {
+          description: 'Attachment registrado correctamente',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['attachment'],
+                properties: { attachment: { $ref: '#/components/schemas/AttachmentRecord' } },
+              },
+            },
+          },
+        },
+        400: {
+          description:
+            'Payload inválido (storageKey ausente, fileSizeBytes no numérico, cdnUrl inválida)',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ValidationErrorResponse' },
+            },
+          },
+        },
+        401: { $ref: '#/components/responses/Unauthorized' },
+        404: { $ref: '#/components/responses/NotFound' },
+        500: { $ref: '#/components/responses/InternalError' },
+      },
+    },
+  },
 };
 
 // ─── Spec completa ────────────────────────────────────────────────────────────
@@ -2283,7 +2660,8 @@ export const createSwaggerSpec = ({ port }: SwaggerSpecParams): OpenAPIDocument 
       '- **Auth**: Autenticación JWT con refresh token rotado, multi-sesión por dispositivo, rate limiting y lockout progresivo.',
       '- **Admin**: Gestión de usuarios del panel (CRUD). Solo SUPERADMIN.',
       '- **Webhook**: Webhook de WhatsApp Cloud API para recepción de mensajes entrantes.',
-      '- **Messages**: Envío de mensajes salientes a ciudadanos vía WhatsApp.',
+      '- **Messages**: Envío de mensajes salientes a ciudadanos vía WhatsApp y gestión de attachments.',
+      '- **Conversations**: Listado, detalle, mensajes (GET/POST) y acciones (assign, transfer, close, reopen).',
       '- **Handover**: Transferencia de conversaciones bot↔agente y escalado.',
       '- **Health**: Health check para monitoreo y load balancers.',
       '',

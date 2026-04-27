@@ -53,14 +53,14 @@
  *             withDevice:
  *               summary: Login con device-id en body
  *               value:
- *                 email: admin@vozciudadana.gob
- *                 password: "MiPassword123!"
+ *                 email: admin@vozcuidadana.mx
+ *                 password: "changeme_in_production_123!"
  *                 deviceId: "browser-chrome-desktop-uuid"
  *             minimal:
  *               summary: Login mínimo (sesión anónima)
  *               value:
- *                 email: admin@vozciudadana.gob
- *                 password: "MiPassword123!"
+ *                 email: admin@vozcuidadana.mx
+ *                 password: "changeme_in_production_123!"
  *     responses:
  *       200:
  *         description: Login exitoso — par de tokens + perfil del usuario
@@ -86,7 +86,7 @@
  *               refreshToken: eyJhbGciOiJIUzI1NiJ9.eyJqdGkiOiJ1dWlkLTEifQ.sig
  *               user:
  *                 id: 550e8400-e29b-41d4-a716-446655440000
- *                 email: admin@vozciudadana.gob
+ *                 email: admin@vozcuidadana.mx
  *                 fullName: Ana García
  *                 roles: [SUPERADMIN]
  *       400:
@@ -213,7 +213,7 @@
  *             example:
  *               user:
  *                 id: 550e8400-e29b-41d4-a716-446655440000
- *                 email: admin@vozciudadana.gob
+ *                 email: admin@vozcuidadana.mx
  *                 fullName: Ana García
  *                 roles: [SUPERADMIN]
  *       401:
