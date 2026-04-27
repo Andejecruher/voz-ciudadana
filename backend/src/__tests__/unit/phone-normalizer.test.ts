@@ -1,7 +1,12 @@
 /**
  * Unit tests: phone normalizer
  */
-import { normalizePhone, normalizePhoneForStorage, isMexicanNumber } from '../../utils/phone-normalizer';
+import { describe, expect, it } from '@jest/globals';
+import {
+  isMexicanNumber,
+  normalizePhone,
+  normalizePhoneForStorage,
+} from '../../utils/phone-normalizer';
 
 describe('normalizePhoneForStorage — formato canónico DB (solo dígitos, sin +)', () => {
   it('quita el + si lo tiene', () => {
@@ -17,7 +22,9 @@ describe('normalizePhoneForStorage — formato canónico DB (solo dígitos, sin 
   });
 
   it('+52... y 52... mismo número producen el mismo resultado', () => {
-    expect(normalizePhoneForStorage('+521234567890')).toBe(normalizePhoneForStorage('521234567890'));
+    expect(normalizePhoneForStorage('+521234567890')).toBe(
+      normalizePhoneForStorage('521234567890'),
+    );
   });
 });
 

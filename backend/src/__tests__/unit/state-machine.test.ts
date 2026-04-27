@@ -2,6 +2,7 @@
  * Unit tests: ConversationStateMachine — validación de transiciones
  * Cubre: transiciones válidas, transiciones inválidas, anti-loop, handover completo.
  */
+import { describe, expect, it, jest } from '@jest/globals';
 import { VALID_TRANSITIONS } from '../../config/conversation-states';
 import { ConversationFlowState } from '../../types/whatsapp.types';
 
@@ -15,18 +16,18 @@ describe('VALID_TRANSITIONS — transiciones de estado', () => {
     ['ESCALATED', 'CLOSED'],
   ];
 
-  test.each(validPairs)('debe permitir %s → %s', (from, to) => {
+  it.each(validPairs)('debe permitir %s → %s', (from, to) => {
     expect(VALID_TRANSITIONS[from]?.includes(to)).toBe(true);
   });
 
   // Transiciones que definitivamente no deben estar permitidas
   const invalidPairs: Array<[ConversationFlowState, ConversationFlowState]> = [
-    ['CLOSED', 'HUMAN_FLOW'],   // CLOSED solo puede ir a BOT_FLOW
-    ['ESCALATED', 'BOT_FLOW'],  // ESCALATED puede ir a HUMAN_FLOW o CLOSED, no BOT_FLOW
+    ['CLOSED', 'HUMAN_FLOW'], // CLOSED solo puede ir a BOT_FLOW
+    ['ESCALATED', 'BOT_FLOW'], // ESCALATED puede ir a HUMAN_FLOW o CLOSED, no BOT_FLOW
     ['HUMAN_FLOW', 'HUMAN_FLOW'], // auto-transición
   ];
 
-  test.each(invalidPairs)('debe rechazar %s → %s como inválido', (from, to) => {
+  it.each(invalidPairs)('debe rechazar %s → %s como inválido', (from, to) => {
     expect(VALID_TRANSITIONS[from]?.includes(to) ?? false).toBe(false);
   });
 
@@ -48,7 +49,9 @@ describe('ConversationStateMachine — isValidTransition', () => {
   };
 
   // Importar clase directamente
-  const { ConversationStateMachine } = require('../../services/orchestrator/conversation-state-machine');
+  const {
+    ConversationStateMachine,
+  } = require('../../services/orchestrator/conversation-state-machine');
   const machine = new ConversationStateMachine(mockRepo);
 
   it('debe retornar true para transición BOT_FLOW → REGISTERING', () => {

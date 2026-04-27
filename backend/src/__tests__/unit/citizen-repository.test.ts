@@ -6,6 +6,7 @@
  * - findOrCreate con +52 y 52 no genera dos registros
  * - phone se almacena siempre sin + (formato canónico)
  */
+import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { LeadStatus, SourceChannel } from '@prisma/client';
 import { CitizenRepository } from '../../services/repositories/citizen.repository';
 
@@ -13,12 +14,26 @@ function makePrismaMock() {
   const store: Record<string, object> = {};
   return {
     citizen: {
-      findUnique: jest.fn(async ({ where }: { where: { phone: string } }) => store[where.phone] ?? null),
-      create: jest.fn(async ({ data }: { data: { phone: string; name?: string; lastName?: string; sourceChannel: SourceChannel; leadStatus: LeadStatus } }) => {
-        const citizen = { id: `cit-${Date.now()}`, ...data };
-        store[data.phone] = citizen;
-        return citizen;
-      }),
+      findUnique: jest.fn(
+        async ({ where }: { where: { phone: string } }) => store[where.phone] ?? null,
+      ),
+      create: jest.fn(
+        async ({
+          data,
+        }: {
+          data: {
+            phone: string;
+            name?: string;
+            lastName?: string;
+            sourceChannel: SourceChannel;
+            leadStatus: LeadStatus;
+          };
+        }) => {
+          const citizen = { id: `cit-${Date.now()}`, ...data };
+          store[data.phone] = citizen;
+          return citizen;
+        },
+      ),
       update: jest.fn(),
     },
     _store: store,
@@ -37,7 +52,13 @@ describe('CitizenRepository — normalización canónica de teléfono', () => {
 
   it('findByPhone("+521234567890") y findByPhone("521234567890") encuentran el mismo registro', async () => {
     // Crear con formato canónico (sin +)
-    await prisma.citizen.create({ data: { phone: '521234567890', sourceChannel: SourceChannel.whatsapp, leadStatus: LeadStatus.new } });
+    await prisma.citizen.create({
+      data: {
+        phone: '521234567890',
+        sourceChannel: SourceChannel.whatsapp,
+        leadStatus: LeadStatus.new,
+      },
+    });
 
     const withPlus = await repo.findByPhone('+521234567890');
     const withoutPlus = await repo.findByPhone('521234567890');

@@ -47,14 +47,12 @@ const app = express();
  * Se deshabilita contentSecurityPolicy únicamente para las rutas de docs.
  * El resto de la app mantiene la CSP estricta de helmet.
  */
-// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 app.use(
   /^\/(api-docs|docs)(\/|$)/,
   helmet({
     contentSecurityPolicy: false,
   }),
 );
-// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 app.use(/^(?!\/(api-docs|docs))/, helmet());
 
 /**
@@ -62,9 +60,7 @@ app.use(/^(?!\/(api-docs|docs))/, helmet());
  * En producción, restringir origin al dominio del frontend.
  * Supuesto: En desarrollo se permite todo; en prod configurar via CORS_ORIGIN env.
  */
-// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 app.use(
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-call
   cors({
     origin: env.CORS_ORIGIN,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],

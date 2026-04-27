@@ -52,9 +52,7 @@ describe('validate() middleware', () => {
     expect(res.status).toBe(400);
     expect(body.success).toBe(false);
     expect(body.code).toBe('VALIDATION_ERROR');
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     expect(Array.isArray((res.body as Record<string, unknown>)['issues'])).toBe(true);
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     expect(((res.body as Record<string, unknown>)['issues'] as unknown[]).length).toBeGreaterThan(
       0,
     );

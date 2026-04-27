@@ -1,13 +1,14 @@
 /**
  * Unit tests: utils/app-error — jerarquía de errores
  */
+import { describe, expect, it } from '@jest/globals';
 import {
   AppError,
-  ValidationError,
-  NotFoundError,
   ConflictError,
-  UnauthorizedError,
   ForbiddenError,
+  NotFoundError,
+  UnauthorizedError,
+  ValidationError,
 } from '../../utils/app-error';
 
 describe('AppError', () => {

@@ -1067,55 +1067,55 @@ export class BotService {
    * Persiste un mensaje INBOUND del ciudadano en su conversación activa.
    * Crea o reutiliza una conversación OPEN.
    */
-  private async persistInboundMessage(
-    phone: string,
-    text: string,
-    waMessageId: string,
-  ): Promise<void> {
-    const citizen = await this.prisma.citizen.findUnique({ where: { phone } });
-    if (!citizen) return;
+  // private async persistInboundMessage(
+  //   phone: string,
+  //   text: string,
+  //   waMessageId: string,
+  // ): Promise<void> {
+  //   const citizen = await this.prisma.citizen.findUnique({ where: { phone } });
+  //   if (!citizen) return;
 
-    const conversation = await this.ensureOpenConversation(citizen.id);
+  //   const conversation = await this.ensureOpenConversation(citizen.id);
 
-    await this.prisma.message.create({
-      data: {
-        conversationId: conversation.id,
-        direction: MessageDirection.inbound,
-        body: text,
-        externalMessageId: waMessageId,
-      },
-    });
-  }
+  //   await this.prisma.message.create({
+  //     data: {
+  //       conversationId: conversation.id,
+  //       direction: MessageDirection.inbound,
+  //       body: text,
+  //       externalMessageId: waMessageId,
+  //     },
+  //   });
+  // }
 
   /**
    * Busca una conversación OPEN para el ciudadano, o crea una nueva.
    *
    * @param citizenId - UUID del ciudadano en la DB
    */
-  private async ensureOpenConversation(citizenId: string) {
-    const existing = await this.prisma.conversation.findFirst({
-      where: { citizenId, status: ConversationStatus.open },
-      include: { meta: true },
-    });
+  // private async ensureOpenConversation(citizenId: string) {
+  //   const existing = await this.prisma.conversation.findFirst({
+  //     where: { citizenId, status: ConversationStatus.open },
+  //     include: { meta: true },
+  //   });
 
-    if (existing) {
-      // Crear meta si no existe (B4: conversaciones sin meta causan throws en el orquestador)
-      if (!existing.meta) {
-        await this.prisma.conversationMeta.create({
-          data: { conversationId: existing.id },
-        });
-      }
-      return existing;
-    }
+  //   if (existing) {
+  //     // Crear meta si no existe (B4: conversaciones sin meta causan throws en el orquestador)
+  //     if (!existing.meta) {
+  //       await this.prisma.conversationMeta.create({
+  //         data: { conversationId: existing.id },
+  //       });
+  //     }
+  //     return existing;
+  //   }
 
-    return this.prisma.conversation.create({
-      data: {
-        citizenId,
-        status: ConversationStatus.open,
-        meta: { create: { flowState: 'BOT_FLOW' } },
-      },
-    });
-  }
+  //   return this.prisma.conversation.create({
+  //     data: {
+  //       citizenId,
+  //       status: ConversationStatus.open,
+  //       meta: { create: { flowState: 'BOT_FLOW' } },
+  //     },
+  //   });
+  // }
 
   // ─── Envío de mensajes outbound ───────────────────────────────────────────
 

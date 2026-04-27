@@ -1,17 +1,19 @@
 /**
  * Unit tests: HMAC validator, AppSecretProof, IdempotencyKey
  */
+import { describe, expect, it } from '@jest/globals';
 import * as crypto from 'crypto';
 import {
-  validateHmacSignature,
   generateAppSecretProof,
   generateIdempotencyKey,
+  validateHmacSignature,
 } from '../../utils/hmac-validator';
 
 describe('validateHmacSignature', () => {
   const appSecret = 'test-secret';
   const body = Buffer.from('{"test":"payload"}');
-  const validSignature = 'sha256=' + crypto.createHmac('sha256', appSecret).update(body).digest('hex');
+  const validSignature =
+    'sha256=' + crypto.createHmac('sha256', appSecret).update(body).digest('hex');
 
   it('debe retornar true para HMAC válido', () => {
     expect(validateHmacSignature(body, validSignature, appSecret)).toBe(true);

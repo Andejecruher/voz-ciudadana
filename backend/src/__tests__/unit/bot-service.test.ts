@@ -13,6 +13,7 @@
  * - Handover en orquestador: REGISTERING→DEPARTMENT_ROUTING al completar
  */
 
+import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { LeadStatus } from '@prisma/client';
 import {
   BotFsmState,
@@ -32,30 +33,32 @@ import {
 
 // ─── Helpers: crear mocks ────────────────────────────────────────────────────
 
+const asyncMock = <T = unknown>() => jest.fn<(...args: unknown[]) => Promise<T>>();
+
 function makePrismaMock() {
   return {
     citizen: {
-      findUnique: jest.fn(),
-      upsert: jest.fn(),
-      update: jest.fn(),
+      findUnique: asyncMock(),
+      upsert: asyncMock(),
+      update: asyncMock(),
     },
     neighborhood: {
-      findMany: jest.fn(),
+      findMany: asyncMock(),
     },
     conversation: {
-      findFirst: jest.fn(),
-      create: jest.fn(),
+      findFirst: asyncMock(),
+      create: asyncMock(),
     },
     conversationMeta: {
-      create: jest.fn().mockResolvedValue({}),
+      create: asyncMock().mockResolvedValue({}),
     },
     message: {
-      create: jest.fn(),
+      create: asyncMock(),
     },
     outboxEvent: {
-      findUnique: jest.fn(),
-      create: jest.fn(),
-      update: jest.fn(),
+      findUnique: asyncMock(),
+      create: asyncMock(),
+      update: asyncMock(),
     },
   };
 }
@@ -76,8 +79,8 @@ function makeRedisMock() {
 
 function makeWaMock() {
   return {
-    sendText: jest.fn().mockResolvedValue({ messages: [{ id: 'wamid.out.test' }] }),
-    markAsRead: jest.fn().mockResolvedValue({}),
+    sendText: asyncMock().mockResolvedValue({ messages: [{ id: 'wamid.out.test' }] }),
+    markAsRead: asyncMock().mockResolvedValue({}),
   };
 }
 
@@ -610,11 +613,11 @@ describe('buildNeighborhoodListMessage — paginación de colonias', () => {
 describe('BotService — guard de longitud en sendMessage', () => {
   function makePrismaMock() {
     return {
-      citizen: { findUnique: jest.fn(), upsert: jest.fn(), update: jest.fn() },
-      neighborhood: { findMany: jest.fn() },
-      conversation: { findFirst: jest.fn(), create: jest.fn() },
-      message: { create: jest.fn() },
-      outboxEvent: { findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
+      citizen: { findUnique: asyncMock(), upsert: asyncMock(), update: asyncMock() },
+      neighborhood: { findMany: asyncMock() },
+      conversation: { findFirst: asyncMock(), create: asyncMock() },
+      message: { create: asyncMock() },
+      outboxEvent: { findUnique: asyncMock(), create: asyncMock(), update: asyncMock() },
     };
   }
   function makeRedisMock() {
@@ -633,8 +636,8 @@ describe('BotService — guard de longitud en sendMessage', () => {
     const prisma = makePrismaMock();
     const redis = makeRedisMock();
     const wa = {
-      sendText: jest.fn().mockResolvedValue({ messages: [{ id: 'wamid.x' }] }),
-      markAsRead: jest.fn(),
+      sendText: asyncMock().mockResolvedValue({ messages: [{ id: 'wamid.x' }] }),
+      markAsRead: asyncMock(),
     };
     // @ts-ignore
     const bot = new BotService(prisma, redis, wa);
@@ -652,7 +655,7 @@ describe('BotService — guard de longitud en sendMessage', () => {
     await bot.handleMessage('521234567890', 'Colonia', 'wamid-long-1', 'corr-long');
 
     expect(wa.sendText).toHaveBeenCalled();
-    const sentText: string = wa.sendText.mock.calls[0][1];
+    const sentText = wa.sendText.mock.calls[0][1] as string;
     expect(sentText.length).toBeLessThanOrEqual(WA_MAX_TEXT_LENGTH);
   });
 
@@ -660,8 +663,8 @@ describe('BotService — guard de longitud en sendMessage', () => {
     const prisma = makePrismaMock();
     const redis = makeRedisMock();
     const wa = {
-      sendText: jest.fn().mockResolvedValue({ messages: [{ id: 'wamid.x' }] }),
-      markAsRead: jest.fn(),
+      sendText: asyncMock().mockResolvedValue({ messages: [{ id: 'wamid.x' }] }),
+      markAsRead: asyncMock(),
     };
     // @ts-ignore
     const bot = new BotService(prisma, redis, wa);
@@ -680,7 +683,7 @@ describe('BotService — guard de longitud en sendMessage', () => {
     ).resolves.toBeUndefined();
     // El fallback debe enviarse, NO el texto original largo
     expect(wa.sendText).toHaveBeenCalledTimes(1);
-    const sentText: string = wa.sendText.mock.calls[0][1];
+    const sentText = wa.sendText.mock.calls[0][1] as string;
     expect(sentText.length).toBeLessThanOrEqual(WA_MAX_TEXT_LENGTH);
     expect(sentText).toContain('⚠️');
   });
@@ -689,8 +692,8 @@ describe('BotService — guard de longitud en sendMessage', () => {
     const prisma = makePrismaMock();
     const redis = makeRedisMock();
     const wa = {
-      sendText: jest.fn().mockRejectedValue(new Error('Meta API error: 500')),
-      markAsRead: jest.fn(),
+      sendText: asyncMock().mockRejectedValue(new Error('Meta API error: 500')),
+      markAsRead: asyncMock(),
     };
     // @ts-ignore
     const bot = new BotService(prisma, redis, wa);
@@ -970,7 +973,7 @@ describe('BotService — observabilidad del matching de colonia', () => {
   let redis: ReturnType<typeof makeRedisMock>;
   let wa: ReturnType<typeof makeWaMock>;
   let bot: BotService;
-  let consoleSpy: jest.SpyInstance;
+  let consoleSpy: ReturnType<typeof jest.spyOn>;
 
   const OBS_PHONE = '521234599999';
   const OBS_CORR = 'corr-obs-001';
@@ -1001,9 +1004,9 @@ describe('BotService — observabilidad del matching de colonia', () => {
 
     // Buscar el log que contiene bot.neighborhood.match_evaluated
     const logCalls = consoleSpy.mock.calls
-      .map((c) => {
+      .map((c: unknown[]) => {
         try {
-          return JSON.parse(c[0]);
+          return JSON.parse(c[0] as string);
         } catch {
           return null;
         }
@@ -1030,9 +1033,9 @@ describe('BotService — observabilidad del matching de colonia', () => {
     await bot.handleMessage(OBS_PHONE, 'Centro', 'wamid-obs-2', OBS_CORR);
 
     const logCalls = consoleSpy.mock.calls
-      .map((c) => {
+      .map((c: unknown[]) => {
         try {
-          return JSON.parse(c[0]);
+          return JSON.parse(c[0] as string);
         } catch {
           return null;
         }
@@ -1059,9 +1062,9 @@ describe('BotService — observabilidad del matching de colonia', () => {
     await bot.handleMessage(OBS_PHONE, 'si', 'wamid-obs-3', OBS_CORR);
 
     const logCalls = consoleSpy.mock.calls
-      .map((c) => {
+      .map((c: unknown[]) => {
         try {
-          return JSON.parse(c[0]);
+          return JSON.parse(c[0] as string);
         } catch {
           return null;
         }
@@ -1086,7 +1089,7 @@ describe('BotService — observabilidad del matching de colonia', () => {
 
     await bot.handleMessage(OBS_PHONE, 'Centro', 'wamid-obs-phone', OBS_CORR);
 
-    const allLogs = consoleSpy.mock.calls.map((c) => c[0]);
+    const allLogs = consoleSpy.mock.calls.map((c: unknown[]) => c[0]);
     // El número completo NO debe aparecer en ningún log
     allLogs.forEach((raw: string) => {
       expect(raw).not.toContain(OBS_PHONE);
@@ -1105,20 +1108,20 @@ describe('BotService — hardening privacidad: phone nunca en claro en logs', ()
   let redis: ReturnType<typeof makeRedisMock>;
   let wa: ReturnType<typeof makeWaMock>;
   let bot: BotService;
-  let infoSpy: jest.SpyInstance;
-  let warnSpy: jest.SpyInstance;
-  let errorSpy: jest.SpyInstance;
-  let debugSpy: jest.SpyInstance;
+  let infoSpy: ReturnType<typeof jest.spyOn>;
+  let warnSpy: ReturnType<typeof jest.spyOn>;
+  let errorSpy: ReturnType<typeof jest.spyOn>;
+  let debugSpy: ReturnType<typeof jest.spyOn>;
 
   const PH = '521234599998';
   const MASKED = maskPhone(PH);
 
   function collectAllLogs() {
     return [
-      ...infoSpy.mock.calls.map((c) => c[0]),
-      ...warnSpy.mock.calls.map((c) => c[0]),
-      ...errorSpy.mock.calls.map((c) => c[0]),
-      ...debugSpy.mock.calls.map((c) => c[0]),
+      ...infoSpy.mock.calls.map((c: unknown[]) => c[0]),
+      ...warnSpy.mock.calls.map((c: unknown[]) => c[0]),
+      ...errorSpy.mock.calls.map((c: unknown[]) => c[0]),
+      ...debugSpy.mock.calls.map((c: unknown[]) => c[0]),
     ];
   }
 
@@ -1161,7 +1164,7 @@ describe('BotService — hardening privacidad: phone nunca en claro en logs', ()
     const logs = collectAllLogs();
     assertNoRawPhone(logs);
 
-    const warnLogs = warnSpy.mock.calls.map((c) => c[0]);
+    const warnLogs = warnSpy.mock.calls.map((c: unknown[]) => c[0]);
     const dupLog = warnLogs
       .map((r: string) => {
         try {
@@ -1188,7 +1191,7 @@ describe('BotService — hardening privacidad: phone nunca en claro en logs', ()
     const logs = collectAllLogs();
     assertNoRawPhone(logs);
 
-    const infoLogs = infoSpy.mock.calls.map((c) => c[0]);
+    const infoLogs = infoSpy.mock.calls.map((c: unknown[]) => c[0]);
     const compLog = infoLogs
       .map((r: string) => {
         try {
@@ -1212,7 +1215,7 @@ describe('BotService — hardening privacidad: phone nunca en claro en logs', ()
     const logs = collectAllLogs();
     assertNoRawPhone(logs);
 
-    const warnLogs = warnSpy.mock.calls.map((c) => c[0]);
+    const warnLogs = warnSpy.mock.calls.map((c: unknown[]) => c[0]);
     const unkLog = warnLogs
       .map((r: string) => {
         try {
@@ -1234,7 +1237,7 @@ describe('BotService — hardening privacidad: phone nunca en claro en logs', ()
     const logs = collectAllLogs();
     assertNoRawPhone(logs);
 
-    const infoLogs = infoSpy.mock.calls.map((c) => c[0]);
+    const infoLogs = infoSpy.mock.calls.map((c: unknown[]) => c[0]);
     const fallbackLog = infoLogs
       .map((r: string) => {
         try {
@@ -1257,7 +1260,7 @@ describe('BotService — hardening privacidad: phone nunca en claro en logs', ()
     const logs = collectAllLogs();
     assertNoRawPhone(logs);
 
-    const infoLogs = infoSpy.mock.calls.map((c) => c[0]);
+    const infoLogs = infoSpy.mock.calls.map((c: unknown[]) => c[0]);
     const nameLog = infoLogs
       .map((r: string) => {
         try {
@@ -1280,7 +1283,7 @@ describe('BotService — hardening privacidad: phone nunca en claro en logs', ()
     const logs = collectAllLogs();
     assertNoRawPhone(logs);
 
-    const infoLogs = infoSpy.mock.calls.map((c) => c[0]);
+    const infoLogs = infoSpy.mock.calls.map((c: unknown[]) => c[0]);
     const nbhdLog = infoLogs
       .map((r: string) => {
         try {
@@ -1303,7 +1306,7 @@ describe('BotService — hardening privacidad: phone nunca en claro en logs', ()
     const logs = collectAllLogs();
     assertNoRawPhone(logs);
 
-    const infoLogs = infoSpy.mock.calls.map((c) => c[0]);
+    const infoLogs = infoSpy.mock.calls.map((c: unknown[]) => c[0]);
     const awiLog = infoLogs
       .map((r: string) => {
         try {
@@ -1326,7 +1329,7 @@ describe('BotService — hardening privacidad: phone nunca en claro en logs', ()
     const logs = collectAllLogs();
     assertNoRawPhone(logs);
 
-    const infoLogs = infoSpy.mock.calls.map((c) => c[0]);
+    const infoLogs = infoSpy.mock.calls.map((c: unknown[]) => c[0]);
     const regLog = infoLogs
       .map((r: string) => {
         try {
@@ -1409,7 +1412,7 @@ describe('BotService — hardening privacidad: phone nunca en claro en logs', ()
       ],
     });
 
-    const errorLogs = errorSpy.mock.calls.map((c) => c[0]);
+    const errorLogs = errorSpy.mock.calls.map((c: unknown[]) => c[0]);
     const procErrLog = errorLogs
       .map((r: string) => {
         try {
@@ -1437,7 +1440,7 @@ describe('BotService — hardening privacidad: phone nunca en claro en logs', ()
     const logs = collectAllLogs();
     assertNoRawPhone(logs);
 
-    const errLogs = errorSpy.mock.calls.map((c) => c[0]);
+    const errLogs = errorSpy.mock.calls.map((c: unknown[]) => c[0]);
     const tooLongLog = errLogs
       .map((r: string) => {
         try {
@@ -1464,7 +1467,7 @@ describe('BotService — hardening privacidad: phone nunca en claro en logs', ()
     const logs = collectAllLogs();
     assertNoRawPhone(logs);
 
-    const errLogs = errorSpy.mock.calls.map((c) => c[0]);
+    const errLogs = errorSpy.mock.calls.map((c: unknown[]) => c[0]);
     const fallbackFailLog = errLogs
       .map((r: string) => {
         try {

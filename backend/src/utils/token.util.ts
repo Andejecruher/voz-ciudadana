@@ -8,9 +8,13 @@
  * - Esto permite logout desde server side (revocar jti en Redis).
  */
 import crypto from 'crypto';
-import { sign, verify } from 'jsonwebtoken';
+import { sign, verify, type SignOptions } from 'jsonwebtoken';
 import { env } from '../config/env.config';
-import type { AccessTokenPayload, AuthenticatedUser, RefreshTokenPayload } from '../types/auth.types';
+import type {
+  AccessTokenPayload,
+  AuthenticatedUser,
+  RefreshTokenPayload,
+} from '../types/auth.types';
 
 // ── Helpers internos ─────────────────────────────────────────────────────────
 
@@ -32,9 +36,9 @@ export function signAccessToken(user: AuthenticatedUser): string {
     type: 'access',
   };
 
-  // jsonwebtoken@9 types use StringValue from `ms` — cast needed for plain string env var
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
-  const accessToken: string = (sign as any)(payload, env.JWT_SECRET, { expiresIn: env.JWT_ACCESS_EXPIRES_IN });
+  const accessToken = sign(payload, env.JWT_SECRET, {
+    expiresIn: env.JWT_ACCESS_EXPIRES_IN as SignOptions['expiresIn'],
+  });
   return accessToken;
 }
 
@@ -56,9 +60,9 @@ export function signRefreshToken(userId: string, deviceId: string): { token: str
     deviceId,
   };
 
-  // jsonwebtoken@9 types use StringValue from `ms` — cast needed for plain string env var
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
-  const token: string = (sign as any)(payload, getRefreshSecret(), { expiresIn: env.JWT_REFRESH_EXPIRES_IN });
+  const token = sign(payload, getRefreshSecret(), {
+    expiresIn: env.JWT_REFRESH_EXPIRES_IN as SignOptions['expiresIn'],
+  });
 
   return { token, jti };
 }

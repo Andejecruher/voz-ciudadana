@@ -1,4 +1,7 @@
+import { describe, expect, it, jest } from '@jest/globals';
 import { ConversationsService } from '../../services/conversations.service';
+
+const asyncMock = <T = unknown>() => jest.fn<(...args: unknown[]) => Promise<T>>();
 
 describe('ConversationsService — acciones', () => {
   const conversationId = 'conv-1';
@@ -8,12 +11,12 @@ describe('ConversationsService — acciones', () => {
     const mockCtx = { id: conversationId, meta: { flowState: 'BOT_FLOW', version: 1 } };
 
     const conversationRepo: any = {
-      getConversationContext: jest.fn().mockResolvedValue(mockCtx),
+      getConversationContext: asyncMock().mockResolvedValue(mockCtx),
     };
 
     const stateMachine: any = {
       isValidTransition: jest.fn().mockReturnValue(true),
-      transition: jest.fn().mockResolvedValue(undefined),
+      transition: asyncMock<void>().mockResolvedValue(undefined),
     };
 
     const prisma: any = {
@@ -27,11 +30,7 @@ describe('ConversationsService — acciones', () => {
       }),
     };
 
-    const svc = new ConversationsService(
-      prisma as any,
-      conversationRepo as any,
-      stateMachine as any,
-    );
+    const svc = new ConversationsService(prisma, conversationRepo, stateMachine);
 
     const res = await svc.assign(conversationId, agentId, 'dept-a');
 
@@ -48,18 +47,16 @@ describe('ConversationsService — acciones', () => {
 
   it('close debe fallar si la transición es inválida', async () => {
     const mockCtx = { id: conversationId, meta: { flowState: 'CLOSED', version: 5 } };
-    const conversationRepo: any = { getConversationContext: jest.fn().mockResolvedValue(mockCtx) };
+    const conversationRepo: any = {
+      getConversationContext: asyncMock().mockResolvedValue(mockCtx),
+    };
     const stateMachine: any = {
       isValidTransition: jest.fn().mockReturnValue(false),
       transition: jest.fn(),
     };
     const prisma: any = { conversation: { update: jest.fn() } };
 
-    const svc = new ConversationsService(
-      prisma as any,
-      conversationRepo as any,
-      stateMachine as any,
-    );
+    const svc = new ConversationsService(prisma, conversationRepo, stateMachine);
 
     await expect(svc.close(conversationId, 'actor-1')).rejects.toThrow();
   });

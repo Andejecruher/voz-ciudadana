@@ -1,6 +1,8 @@
+import { describe, expect, it, jest } from '@jest/globals';
 import { CitizensService } from '../../services/citizens.service';
 
 function makePrismaMock() {
+  const asyncMock = <T = unknown>() => jest.fn<(...args: unknown[]) => Promise<T>>();
   const store: Record<string, any> = {};
 
   return {
@@ -17,18 +19,18 @@ function makePrismaMock() {
         store[data.phone] = obj;
         return obj;
       }),
-      findMany: jest.fn(),
+      findMany: asyncMock(),
     },
     tag: {
-      findUnique: jest.fn(),
+      findUnique: asyncMock(),
     },
     citizenTag: {
-      findFirst: jest.fn(),
-      create: jest.fn(),
+      findFirst: asyncMock(),
+      create: asyncMock(),
     },
     conversation: {
-      count: jest.fn(),
-      findFirst: jest.fn(),
+      count: asyncMock(),
+      findFirst: asyncMock(),
     },
     _store: store,
   };
@@ -43,7 +45,9 @@ describe('CitizensService — unit', () => {
     const created = await svc.create({ phone: '+521234567890', name: 'Juan' });
 
     expect(prisma.citizen.create).toHaveBeenCalledTimes(1);
-    const call = (prisma.citizen.create as jest.Mock).mock.calls[0][0];
+    const call = (prisma.citizen.create as jest.Mock).mock.calls[0][0] as {
+      data: { phone: string };
+    };
     expect(call.data.phone).toBe('521234567890');
     expect(created.phone).toBe('521234567890');
   });

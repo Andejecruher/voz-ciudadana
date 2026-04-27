@@ -8,8 +8,6 @@ import { describe, expect, it } from '@jest/globals';
 import type { PaginationMeta } from '../../utils/api-response';
 import { fail, ok } from '../../utils/api-response';
 
-// ...existing code...
-
 describe('ok()', () => {
   it('debe retornar success: true con data', () => {
     const result = ok({ id: 1, name: 'test' });

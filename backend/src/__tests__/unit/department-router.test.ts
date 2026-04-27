@@ -2,15 +2,18 @@
  * Unit tests: DepartmentRouterStrategy + MetaErrorParser
  * Cubre: FallbackRoutingStrategy, keyword routing, meta error parsing.
  */
+import { describe, expect, it, jest } from '@jest/globals';
 import {
-  FallbackRoutingStrategy,
   DepartmentRouterStrategy,
+  FallbackRoutingStrategy,
 } from '../../services/orchestrator/department-router.strategy';
 import {
-  parseMetaError,
   isMetaErrorResponse,
   isOutsideConversationWindow,
+  parseMetaError,
 } from '../../utils/meta-error-parser';
+
+const asyncMock = <T = unknown>() => jest.fn<(...args: unknown[]) => Promise<T>>();
 
 function buildCtx(text?: string) {
   return {
@@ -39,7 +42,7 @@ describe('DepartmentRouterStrategy — con mock de prisma', () => {
   it('debe usar fallback "general" cuando no hay keyword match', async () => {
     const mockPrisma = {
       department: {
-        findMany: jest.fn().mockResolvedValue([]),
+        findMany: asyncMock().mockResolvedValue([]),
       },
     };
     // @ts-ignore mock parcial

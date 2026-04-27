@@ -5,17 +5,20 @@
  * en claro cuando registra el warning de ventana 24h.
  */
 
+import { describe, expect, it, jest } from '@jest/globals';
 import { WhatsAppProvider } from '../../services/whatsapp/whatsapp.provider';
 
 // ─── Mock de RedisService ────────────────────────────────────────────────────
 
+const asyncMock = <T = unknown>() => jest.fn<(...args: unknown[]) => Promise<T>>();
+
 function makeRedisMock() {
   return {
-    get: jest.fn().mockResolvedValue(null),
-    set: jest.fn().mockResolvedValue(undefined),
-    del: jest.fn().mockResolvedValue(undefined),
-    incr: jest.fn().mockResolvedValue(1),
-    expire: jest.fn().mockResolvedValue(1),
+    get: asyncMock().mockResolvedValue(null),
+    set: asyncMock().mockResolvedValue(undefined),
+    del: asyncMock().mockResolvedValue(undefined),
+    incr: asyncMock().mockResolvedValue(1),
+    expire: asyncMock().mockResolvedValue(1),
   };
 }
 
@@ -58,17 +61,18 @@ describe('WhatsAppProvider — privacidad de logs', () => {
     // Spy sobre sendText para lanzar error de fuera de ventana
     const outsideWindowError = { code: 131047, message: 'Outside conversation window' };
     jest.spyOn(provider as any, 'sendText').mockRejectedValueOnce(outsideWindowError);
-    jest.spyOn(provider as any, 'sendTemplate').mockResolvedValueOnce({ messages: [{ id: 'wamid.tmpl' }] });
+    jest
+      .spyOn(provider as any, 'sendTemplate')
+      .mockResolvedValueOnce({ messages: [{ id: 'wamid.tmpl' }] });
     // checkRateLimit debe pasar sin bloquear
     jest.spyOn(provider as any, 'checkRateLimit').mockResolvedValue(undefined);
 
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
 
-    await provider.sendTextWithTemplateFallback(
-      PHONE,
-      'Hola ciudadano',
-      { name: 'welcome_template', languageCode: 'es_MX' },
-    );
+    await provider.sendTextWithTemplateFallback(PHONE, 'Hola ciudadano', {
+      name: 'welcome_template',
+      languageCode: 'es_MX',
+    });
 
     expect(warnSpy).toHaveBeenCalledTimes(1);
     const logged = warnSpy.mock.calls[0][0] as string;

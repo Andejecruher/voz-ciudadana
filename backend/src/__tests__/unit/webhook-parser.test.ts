@@ -2,6 +2,7 @@
  * Unit tests: WebhookParserService
  * Cubre: parsing de texto, detección de payload WA, payload vacío, replay wamid.
  */
+import { describe, expect, it } from '@jest/globals';
 import { WebhookParserService } from '../../services/whatsapp/webhook-parser.service';
 import { WaWebhookPayload } from '../../types/whatsapp.types';
 
