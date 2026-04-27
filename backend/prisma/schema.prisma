@@ -1,5 +1,6 @@
 generator client {
   provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
 }
 
 datasource db {
@@ -84,6 +85,7 @@ model User {
   assignedConversations Conversation[] @relation("ConversationAssignedUser")
   assignedCitizenTags   CitizenTag[]   @relation("CitizenTagAssignedBy")
   uploadedAttachments   Attachment[]   @relation("AttachmentUploadedBy")
+  assignments           Assignment[]   @relation("AssignmentUser")
 
   @@index([email])
   @@map("users")
@@ -174,9 +176,12 @@ model Conversation {
 
   assignedUser User? @relation("ConversationAssignedUser", fields: [assignedUserId], references: [id], onDelete: SetNull)
 
-  messages Message[]
+  messages    Message[]
+  assignments Assignment[]
+  meta        ConversationMeta?
 
   @@index([assignedUserId])
+  @@index([citizenId, status])
   @@map("conversations")
 }
 
@@ -196,6 +201,7 @@ model Message {
   attachment Attachment? @relation("MessageAttachmentByAttachmentId", fields: [attachmentId], references: [id], onDelete: SetNull)
 
   attachmentsViaMessageId Attachment[] @relation("AttachmentBelongsToMessage")
+  statuses                MessageStatus[]
 
   @@index([externalMessageId])
   @@map("messages")
@@ -278,4 +284,177 @@ model CitizenTag {
   @@index([citizenId])
   @@index([tagId])
   @@map("citizen_tags")
+}
+
+// ── Messaging Core ────────────────────────────────────────────────────────────
+
+enum ConversationFlowState {
+  BOT_FLOW
+  REGISTERING
+  DEPARTMENT_ROUTING
+  HUMAN_FLOW
+  ESCALATED
+  CLOSED
+
+  @@map("conversation_flow_state")
+}
+
+enum MessageStatusValue {
+  sent
+  delivered
+  read
+  failed
+
+  @@map("message_status_value")
+}
+
+enum InboxEventStatus {
+  pending
+  processing
+  processed
+  failed
+  dead_lettered
+
+  @@map("inbox_event_status")
+}
+
+enum OutboxEventStatus {
+  pending
+  sending
+  sent
+  failed
+  dead_lettered
+
+  @@map("outbox_event_status")
+}
+
+/// Extiende Conversation con estado de la máquina de estados de orquestación.
+/// Se agrega como modelo separado para no romper el modelo Conversation existente.
+model ConversationMeta {
+  id             String                @id @default(uuid()) @db.Uuid
+  conversationId String                @unique @map("conversation_id") @db.Uuid
+  flowState      ConversationFlowState @default(BOT_FLOW) @map("flow_state")
+  lockedByUserId String?               @map("locked_by_user_id") @db.Uuid
+  lockedAt       DateTime?             @map("locked_at") @db.Timestamptz(6)
+  version        Int                   @default(0)                             // optimistic locking
+  departmentSlug String?               @map("department_slug") @db.VarChar(100)
+  handoverAt     DateTime?             @map("handover_at") @db.Timestamptz(6)
+  createdAt      DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([flowState])
+  @@index([lockedByUserId])
+  @@map("conversation_meta")
+}
+
+/// Registro de estado de entrega de mensajes outbound.
+model MessageStatus {
+  id         String             @id @default(uuid()) @db.Uuid
+  messageId  String             @map("message_id") @db.Uuid
+  wamid      String             @map("wamid") @db.VarChar(255)
+  status     MessageStatusValue
+  errorCode  Int?               @map("error_code")
+  errorTitle String?            @map("error_title") @db.VarChar(255)
+  timestamp  DateTime
+  createdAt  DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@index([wamid])
+  @@index([messageId])
+  @@map("message_statuses")
+}
+
+/// Eventos entrantes del webhook de Meta — inbox queue persistente.
+model InboxEvent {
+  id             String           @id @default(uuid()) @db.Uuid
+  wamid          String           @unique @map("wamid") @db.VarChar(255)      // dedupe key
+  phone          String           @db.VarChar(30)
+  payload        Json             @db.JsonB
+  status         InboxEventStatus @default(pending)
+  retryCount     Int              @default(0) @map("retry_count")
+  lastErrorAt    DateTime?        @map("last_error_at") @db.Timestamptz(6)
+  lastError      String?          @map("last_error") @db.Text
+  idempotencyKey String?          @map("idempotency_key") @db.VarChar(255)
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  processedAt    DateTime?        @map("processed_at") @db.Timestamptz(6)
+
+  @@index([phone])
+  @@index([status])
+  @@index([createdAt])
+  @@map("inbox_events")
+}
+
+/// Cola de eventos salientes — outbox pattern para garantizar entrega a Meta API.
+model OutboxEvent {
+  id             String            @id @default(uuid()) @db.Uuid
+  conversationId String?           @map("conversation_id") @db.Uuid
+  phone          String            @db.VarChar(30)
+  payload        Json              @db.JsonB
+  status         OutboxEventStatus @default(pending)
+  retryCount     Int               @default(0) @map("retry_count")
+  nextRetryAt    DateTime?         @map("next_retry_at") @db.Timestamptz(6)
+  lastError      String?           @map("last_error") @db.Text
+  wamid          String?           @map("wamid") @db.VarChar(255)             // id retornado por Meta
+  idempotencyKey String            @unique @map("idempotency_key") @db.VarChar(255)
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  sentAt         DateTime?         @map("sent_at") @db.Timestamptz(6)
+
+  @@index([phone])
+  @@index([status, nextRetryAt])
+  @@index([conversationId])
+  @@map("outbox_events")
+}
+
+/// Log de todos los webhooks recibidos de Meta (para auditoría y replay).
+model WebhookEventLog {
+  id             String   @id @default(uuid()) @db.Uuid
+  correlationId  String   @map("correlation_id") @db.VarChar(255)
+  rawPayload     Json     @map("raw_payload") @db.JsonB
+  signature      String?  @db.VarChar(255)
+  processedOk    Boolean  @default(false) @map("processed_ok")
+  errorMessage   String?  @map("error_message") @db.Text
+  ipAddress      String?  @map("ip_address") @db.VarChar(45)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([correlationId])
+  @@index([createdAt])
+  @@map("webhook_event_logs")
+}
+
+/// Departamentos disponibles para enrutamiento de conversaciones.
+model Department {
+  id          String   @id @default(uuid()) @db.Uuid
+  slug        String   @unique @db.VarChar(100)
+  name        String   @db.VarChar(255)
+  description String?  @db.Text
+  isActive    Boolean  @default(true) @map("is_active")
+  keywords    String[] @default([]) @db.Text                                  // para routing automático
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([slug])
+  @@index([isActive])
+  @@map("departments")
+}
+
+/// Asignaciones de conversaciones a agentes humanos.
+model Assignment {
+  id             String   @id @default(uuid()) @db.Uuid
+  conversationId String   @map("conversation_id") @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  departmentSlug String?  @map("department_slug") @db.VarChar(100)
+  assignedAt     DateTime @default(now()) @map("assigned_at") @db.Timestamptz(6)
+  releasedAt     DateTime? @map("released_at") @db.Timestamptz(6)
+  isActive       Boolean  @default(true) @map("is_active")
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation("AssignmentUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([userId])
+  @@index([isActive])
+  @@map("assignments")
 }

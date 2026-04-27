@@ -925,12 +925,81 @@ async function seedSuperadmin(): Promise<void> {
   console.log(`   ⚠️  Cambiá la contraseña en producción via SUPERADMIN_PASSWORD env var`);
 }
 
+// ── Departamentos para routing de conversaciones ──────────────────────────────
+
+const DEPARTMENTS = [
+  {
+    slug: 'general',
+    name: 'Atención General',
+    description: 'Canal de atención ciudadana general y consultas no categorizadas.',
+    keywords: [] as string[],
+  },
+  {
+    slug: 'obras_publicas',
+    name: 'Obras Públicas',
+    description: 'Baches, alumbrado, banquetas, drenaje, pavimentación y obra pública en general.',
+    keywords: ['bache', 'baches', 'alumbrado', 'luz', 'poste', 'banqueta', 'drenaje', 'alcantarilla', 'pavimento', 'calle', 'obra', 'construccion', 'grieta', 'fuga', 'agua', 'tubo'],
+  },
+  {
+    slug: 'seguridad',
+    name: 'Seguridad Pública',
+    description: 'Reportes de inseguridad, vandalismo, accidentes y emergencias.',
+    keywords: ['robo', 'asalto', 'accidente', 'violencia', 'pelea', 'emergencia', 'policia', 'seguridad', 'vandalismo', 'graffiti', 'zona de riesgo', 'peligro'],
+  },
+  {
+    slug: 'salud',
+    name: 'Salud',
+    description: 'Centro de salud, vacunas, saneamiento y servicios médicos municipales.',
+    keywords: ['salud', 'medico', 'doctor', 'enfermedad', 'vacuna', 'clinica', 'hospital', 'dengue', 'zancudo', 'fumigacion', 'basura', 'sanidad', 'plaga'],
+  },
+  {
+    slug: 'educacion',
+    name: 'Educación',
+    description: 'Escuelas, becas, programas educativos y cultura.',
+    keywords: ['escuela', 'educacion', 'primaria', 'secundaria', 'beca', 'kinder', 'preescolar', 'maestro', 'salon', 'biblioteca', 'cultura'],
+  },
+  {
+    slug: 'medio_ambiente',
+    name: 'Medio Ambiente',
+    description: 'Recolección de basura, parques, árboles, contaminación.',
+    keywords: ['basura', 'recoleccion', 'reciclaje', 'arbol', 'parque', 'jardin', 'contaminacion', 'quema', 'humo', 'residuos', 'limpieza', 'poda'],
+  },
+  {
+    slug: 'tramites',
+    name: 'Trámites y Servicios',
+    description: 'Pagos, licencias, permisos, actas y trámites municipales.',
+    keywords: ['tramite', 'permiso', 'licencia', 'pago', 'acta', 'predial', 'agua potable', 'catastro', 'certificado', 'adeudo', 'multa', 'servicio'],
+  },
+] as const;
+
+async function seedDepartments(): Promise<void> {
+  for (const dept of DEPARTMENTS) {
+    await prisma.department.upsert({
+      where: { slug: dept.slug },
+      update: {
+        name: dept.name,
+        description: dept.description,
+        keywords: dept.keywords as unknown as string[],
+      },
+      create: {
+        slug: dept.slug,
+        name: dept.name,
+        description: dept.description,
+        keywords: dept.keywords as unknown as string[],
+        isActive: true,
+      },
+    });
+  }
+  console.log(`✅ ${DEPARTMENTS.length} departments seeded: ${DEPARTMENTS.map((d) => d.slug).join(', ')}`);
+}
+
 async function main(): Promise<void> {
   console.log('🌱 Seeding database...');
 
   await seedNeighborhoods();
   await seedRoles();
   await seedSuperadmin();
+  await seedDepartments();
 
   console.log('🎉 Seed complete');
 }

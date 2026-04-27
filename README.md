@@ -130,7 +130,7 @@ Variables obligatorias:
 > Usa el profile `dev` para levantar API + Postgres + Redis locales.
 
 ```bash
-docker-compose --profile dev up --build
+docker compose --profile dev up --build
 ```
 
 La API queda disponible en `http://localhost:8000`.
@@ -138,7 +138,7 @@ La API queda disponible en `http://localhost:8000`.
 Para bajar todo:
 
 ```bash
-docker-compose --profile dev down
+docker compose --profile dev down
 ```
 
 ### 3. Levantar con Docker Compose (prod)
@@ -153,11 +153,11 @@ export DATABASE_URL=postgresql://user:pass@host:5432/db
 export REDIS_HOST=redis-host
 export REDIS_PORT=6379
 export PORT=8000
-docker-compose --profile prod up --build -d
+docker compose --profile prod up --build -d
 ```
 
 Opcion B: crear un archivo `.env` en la raiz del repo con esas variables
-(`docker-compose` lo carga automaticamente).
+(`docker compose` lo carga automaticamente).
 
 La API queda disponible en `http://localhost:8000`.
 
@@ -168,13 +168,13 @@ cd backend
 npm install
 
 # Generar cliente Prisma
-npx prisma generate
+docker compose --profile dev exec api npx prisma generate
 
 # Ejecutar migraciones
-npx prisma migrate dev
+docker compose --profile dev exec api npx prisma migrate dev
 
-# Iniciar en modo watch
-npm run start:dev
+# Ejecutar las migraciones localmente en docker
+docker compose --profile dev exec api npm run prisma:seed
 ```
 
 La API corre en `http://localhost:8000`.  
@@ -184,10 +184,10 @@ Documentación Swagger en `http://localhost:8000/docs`.
 
 ```bash
 # Dentro del contenedor de la API (dev)
-docker-compose --profile dev exec api npx prisma migrate deploy
+docker compose --profile dev exec api npx prisma migrate deploy
 
 # Dentro del contenedor de la API (prod)
-docker-compose --profile prod exec api-prod npx prisma migrate deploy
+docker compose --profile prod exec api-prod npx prisma migrate deploy
 
 # O localmente
 cd backend && npx prisma migrate deploy
@@ -249,6 +249,73 @@ Estado COMPLETE      → mensajes se persisten, pendiente de derivación a agent
 ```
 
 Si la entrada no es válida en cualquier estado, el bot pide reintento sin avanzar.
+
+---
+
+## Tests en Docker
+
+### ¿Por qué existe el profile `test`?
+
+El servicio `api` (profile `dev`) monta un volumen anónimo sobre `/app/node_modules`:
+
+```yaml
+volumes:
+  - ./backend:/app # bind-mount del código fuente
+  - /app/node_modules # ← volumen anónimo que "tapa" el node_modules de la imagen
+```
+
+Este volumen se crea la primera vez que levantás el stack. Si en ese momento la imagen **no tenía devDependencies** (e.g. por un build previo del stage `runner`), el volumen queda **stale** y `jest` nunca aparece, aunque después rebuilds correctamente.
+
+La solución es el servicio `api-test` (profile `test`): no monta ningún volumen sobre `node_modules`, por lo que la imagen usa sus propios `node_modules` (instalados con `npm ci` completo en el stage `test` del Dockerfile).
+
+### Comandos para el equipo
+
+| Comando                         | Qué hace                                               |
+| ------------------------------- | ------------------------------------------------------ |
+| `make test-docker`              | Build + run de tests (primera vez o tras cambiar deps) |
+| `make test-docker-fast`         | Run sin build (iteración rápida, misma imagen)         |
+| `make docker-reset-dev-volumes` | Limpia volúmenes stale del profile dev                 |
+
+O si preferís Docker directo:
+
+```bash
+# Build + run (primera vez o tras cambiar deps/Dockerfile)
+docker compose --profile test build api-test
+docker compose --profile test run --rm api-test
+
+# Run rápido (misma imagen, solo cambios en src/)
+docker compose --profile test run --rm api-test
+```
+
+### Troubleshooting: `jest: not found` en Docker
+
+**Síntoma:** el contenedor de `api-test` arranca pero termina con `jest: not found` o `sh: jest: not found`.
+
+**Causa más probable:** el volumen anónimo de node_modules del servicio `api` (dev) está stale y está siendo reutilizado.
+
+**Solución paso a paso:**
+
+```bash
+# 1. Bajá todo y destruí los volúmenes del stack dev
+make docker-reset-dev-volumes
+# Equivalente: docker compose --profile dev down -v --remove-orphans
+
+# 2. Rebuild completo de la imagen de test
+docker compose --profile test build --no-cache api-test
+
+# 3. Corré los tests
+make test-docker
+```
+
+**Si el error persiste:**
+
+```bash
+# Verificá que jest está en la imagen
+docker compose --profile test run --rm api-test sh -c "ls node_modules/.bin/jest"
+
+# Verificá qué node_modules está usando el contenedor
+docker compose --profile test run --rm api-test sh -c "ls node_modules | head -20"
+```
 
 ---
 

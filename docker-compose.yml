@@ -7,11 +7,12 @@ x-api-base: &api-base
   build:
     context: ./backend
     dockerfile: Dockerfile
-    target: runner        # default para el anchor; cada servicio puede sobreescribir
+    target: runner # default para el anchor; cada servicio puede sobreescribir
   restart: unless-stopped
 
 x-api-env: &api-env
   DATABASE_URL: ${DATABASE_URL:-postgresql://voz:secret@postgres:5432/vozcuidadana}
+  REDIS_URL: redis://${REDIS_HOST:-redis}:${REDIS_PORT:-6379}
   REDIS_HOST: ${REDIS_HOST:-redis}
   REDIS_PORT: ${REDIS_PORT:-6379}
   PORT: ${PORT:-8000}
@@ -24,7 +25,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-      target: dev           # imagen con devDependencies + ts-node-dev
+      target: dev # imagen con devDependencies + ts-node-dev
     profiles:
       - dev
     env_file:
@@ -33,6 +34,30 @@ services:
       <<: *api-env
     ports:
       - "${API_PORT:-8000}:8000"
+    volumes:
+      - ./backend:/app # monta el código fuente del host
+      - /app/node_modules # preserva node_modules del contenedor (no del host)
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ── API Test — corre jest sin volumen anónimo que tape node_modules ──────────
+  api-test:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: test # stage con devDependencies; sin volumen que tape node_modules
+    profiles:
+      - test
+    env_file:
+      - ./backend/.env
+    environment:
+      <<: *api-env
+      NODE_ENV: test
+    volumes:
+      - ./backend/src:/app/src # solo código fuente; node_modules viene de la imagen
     depends_on:
       postgres:
         condition: service_healthy
@@ -57,6 +82,7 @@ services:
     image: postgres:16-alpine
     profiles:
       - dev
+      - test
     restart: unless-stopped
     environment:
       POSTGRES_USER: voz
@@ -77,6 +103,7 @@ services:
     image: redis:7-alpine
     profiles:
       - dev
+      - test
     restart: unless-stopped
     ports:
       - "6379:6379"

@@ -164,7 +164,7 @@ export class AuthService {
     const userId = payload.sub ?? '';
     const jti = payload.jti ?? '';
     // El deviceId del payload tiene prioridad — si se proveyó en el request se usa como fallback
-    const tokenDeviceId = (payload.deviceId as string) ?? deviceId;
+    const tokenDeviceId = payload.deviceId ?? deviceId;
 
     // 2. Validar hash en Redis
     const key = sessionKey(userId, tokenDeviceId, jti);
@@ -278,7 +278,7 @@ export class AuthService {
     }
 
     const jti = payload.jti ?? '';
-    const deviceId = (payload.deviceId as string) ?? 'unknown';
+    const deviceId = payload.deviceId ?? 'unknown';
     const key = sessionKey(userId, deviceId, jti);
 
     await this.redis.del(key);

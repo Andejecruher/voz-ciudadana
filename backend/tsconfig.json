@@ -43,6 +43,7 @@
   "exclude": [
     "node_modules",
     "dist",
-    "prisma/seed/**/*"
+    "prisma/seed/**/*",
+    "src/__tests__/**/*"
   ]
 }

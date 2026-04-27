@@ -152,6 +152,27 @@ const schemas: Record<string, SchemaObject> = {
       isActive: { type: 'boolean', example: true },
     },
   },
+  ConversationFlowState: {
+    type: 'string',
+    enum: ['REGISTERING', 'DEPARTMENT_ROUTING', 'BOT_FLOW', 'HUMAN_FLOW', 'ESCALATED', 'CLOSED'],
+    description: 'Estado del flujo de la conversación',
+    example: 'BOT_FLOW',
+  },
+  SendTextRequest: {
+    type: 'object',
+    required: ['conversationId', 'text'],
+    properties: {
+      conversationId: { type: 'string', format: 'uuid', example: '550e8400-e29b-41d4-a716-446655440000' },
+      text: { type: 'string', minLength: 1, maxLength: 4096, example: 'Hola, ¿en qué te puedo ayudar?' },
+    },
+  },
+  HandoverRequest: {
+    type: 'object',
+    required: ['conversationId'],
+    properties: {
+      conversationId: { type: 'string', format: 'uuid', example: '550e8400-e29b-41d4-a716-446655440000' },
+    },
+  },
   SystemConfig: {
     type: 'object',
     properties: {
@@ -715,6 +736,169 @@ const paths: PathsObject = {
       },
     },
   },
+  // ── Messages ─────────────────────────────────────────────────────────────────
+  '/api/v1/messages/text': {
+    post: {
+      tags: ['Messages'],
+      summary: 'Enviar mensaje de texto al ciudadano',
+      description: [
+        'El agente autenticado envía un mensaje de texto libre a una conversación activa.',
+        'Requiere rol **OPERADOR_CHAT** o superior.',
+        'El mensaje se encola en el Outbox y se envía de forma asíncrona a través de WhatsApp Cloud API.',
+      ].join('\n'),
+      security: [{ bearerAuth: [] }],
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: { $ref: '#/components/schemas/SendTextRequest' },
+          },
+        },
+      },
+      responses: {
+        202: {
+          description: 'Mensaje encolado para envío',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  status: { type: 'string', enum: ['queued'], example: 'queued' },
+                  messageId: { type: 'string', format: 'uuid' },
+                },
+              },
+            },
+          },
+        },
+        400: { description: 'Payload inválido', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        401: { $ref: '#/components/responses/Unauthorized' },
+        403: { $ref: '#/components/responses/Forbidden' },
+        404: { description: 'Conversación no encontrada', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        500: { $ref: '#/components/responses/InternalError' },
+      },
+    },
+  },
+
+  // ── Handover ─────────────────────────────────────────────────────────────────
+  '/api/v1/handover/take': {
+    post: {
+      tags: ['Handover'],
+      summary: 'Tomar control de una conversación',
+      description: [
+        'El agente toma control de una conversación en estado BOT o DEPARTMENT_ROUTING.',
+        'Transiciona el estado a **HUMAN_FLOW**.',
+        'Requiere rol **OPERADOR_CHAT** o superior.',
+        'Retorna 409 si la conversación ya está asignada a un agente.',
+      ].join('\n'),
+      security: [{ bearerAuth: [] }],
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': { schema: { $ref: '#/components/schemas/HandoverRequest' } },
+        },
+      },
+      responses: {
+        200: {
+          description: 'Conversación tomada exitosamente',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  status: { type: 'string', enum: ['taken'], example: 'taken' },
+                  conversationId: { type: 'string', format: 'uuid' },
+                },
+              },
+            },
+          },
+        },
+        400: { description: 'Payload inválido', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        401: { $ref: '#/components/responses/Unauthorized' },
+        403: { $ref: '#/components/responses/Forbidden' },
+        404: { description: 'Conversación no encontrada', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        409: { description: 'Conversación ya asignada a un agente', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        500: { $ref: '#/components/responses/InternalError' },
+      },
+    },
+  },
+
+  '/api/v1/handover/release': {
+    post: {
+      tags: ['Handover'],
+      summary: 'Devolver conversación al bot',
+      description: [
+        'El agente libera la conversación y la devuelve al bot (HUMAN_FLOW → BOT_FLOW).',
+        'Requiere rol **OPERADOR_CHAT** o superior.',
+      ].join('\n'),
+      security: [{ bearerAuth: [] }],
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': { schema: { $ref: '#/components/schemas/HandoverRequest' } },
+        },
+      },
+      responses: {
+        200: {
+          description: 'Conversación liberada',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  status: { type: 'string', enum: ['released'], example: 'released' },
+                  conversationId: { type: 'string', format: 'uuid' },
+                },
+              },
+            },
+          },
+        },
+        400: { description: 'Payload inválido', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        401: { $ref: '#/components/responses/Unauthorized' },
+        403: { $ref: '#/components/responses/Forbidden' },
+        404: { description: 'Conversación no encontrada', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        500: { $ref: '#/components/responses/InternalError' },
+      },
+    },
+  },
+
+  '/api/v1/handover/escalate': {
+    post: {
+      tags: ['Handover'],
+      summary: 'Escalar una conversación',
+      description: [
+        'El agente escala la conversación a un nivel superior (→ ESCALATED).',
+        'Requiere rol **OPERADOR_CHAT** o superior.',
+      ].join('\n'),
+      security: [{ bearerAuth: [] }],
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': { schema: { $ref: '#/components/schemas/HandoverRequest' } },
+        },
+      },
+      responses: {
+        200: {
+          description: 'Conversación escalada',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  status: { type: 'string', enum: ['escalated'], example: 'escalated' },
+                  conversationId: { type: 'string', format: 'uuid' },
+                },
+              },
+            },
+          },
+        },
+        400: { description: 'Payload inválido', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        401: { $ref: '#/components/responses/Unauthorized' },
+        403: { $ref: '#/components/responses/Forbidden' },
+        404: { description: 'Conversación no encontrada', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+        500: { $ref: '#/components/responses/InternalError' },
+      },
+    },
+  },
 };
 
 // ─── Spec completa ────────────────────────────────────────────────────────────
@@ -730,7 +914,9 @@ export const createSwaggerSpec = ({ port }: SwaggerSpecParams): OpenAPIDocument 
       '## Módulos',
       '- **Auth**: Autenticación JWT con refresh token rotado, multi-sesión por dispositivo, rate limiting y lockout progresivo.',
       '- **Admin**: Gestión de usuarios del panel (CRUD). Solo SUPERADMIN.',
-      '- **Webhook**: Webhook de WhatsApp Cloud API para recepción de mensajes del bot FSM.',
+      '- **Webhook**: Webhook de WhatsApp Cloud API para recepción de mensajes entrantes.',
+      '- **Messages**: Envío de mensajes salientes a ciudadanos vía WhatsApp.',
+      '- **Handover**: Transferencia de conversaciones bot↔agente y escalado.',
       '- **Health**: Health check para monitoreo y load balancers.',
       '',
       '## Autenticación',
@@ -748,6 +934,8 @@ export const createSwaggerSpec = ({ port }: SwaggerSpecParams): OpenAPIDocument 
     { name: 'Auth', description: 'Autenticación y gestión de sesiones del panel admin' },
     { name: 'Admin', description: 'Gestión de usuarios del panel (solo SUPERADMIN)' },
     { name: 'Webhook', description: 'Webhook de WhatsApp Cloud API (Meta)' },
+    { name: 'Messages', description: 'Envío de mensajes salientes a ciudadanos vía WhatsApp' },
+    { name: 'Handover', description: 'Gestión de transferencia bot↔agente de conversaciones' },
     { name: 'Health', description: 'Estado de la aplicación' },
   ],
   components: {

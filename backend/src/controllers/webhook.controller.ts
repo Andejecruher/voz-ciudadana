@@ -1,40 +1,38 @@
 /**
- * Controller HTTP para los endpoints del webhook de WhatsApp.
+ * WebhookController — HTTP adapter para endpoints del webhook de WhatsApp.
  *
- * Responsabilidades:
- * - verifyWebhookChallenge: valida hub.mode, hub.verify_token y responde con hub.challenge
- * - receiveWebhookMessage: parsea el payload Meta y delega en BotService
+ * Flujo del POST:
+ * 1. Parsear y validar payload
+ * 2. Persistir InboxEvent en DB (para auditoría y replay)
+ * 3. Log en WebhookEventLog
+ * 4. Encolar en InboxProcessorService (Redis queue)
+ * 5. Responder 200 OK inmediato a Meta (< 5s)
  *
- * Este controller NO contiene lógica de negocio — solo orquesta
- * la capa HTTP ↔ servicios.
- *
- * Nota: El rawBody para la validación HMAC lo captura el middleware
- * metaSignature.middleware.ts ANTES de llegar a receiveWebhookMessage.
+ * La firma HMAC ya fue validada por metaSignature.middleware.ts.
+ * La idempotencia ya fue verificada por idempotency.middleware.ts.
  */
 import { Request, Response } from 'express';
 import { env } from '../config/env.config';
-import { BotService } from '../services/bot.service';
-import { WhatsAppWebhookPayload } from '../types/types';
+import { InboxProcessorService } from '../services/events/inbox-processor.service';
+import { PrismaService } from '../services/prisma.service';
+import { MessageRepository } from '../services/repositories/message.repository';
+import { WebhookParserService } from '../services/whatsapp/webhook-parser.service';
+import { WaWebhookPayload } from '../types/whatsapp.types';
 
 export class WebhookController {
-  /** Token de verificación configurado en el panel de Meta (env: WHATSAPP_VERIFY_TOKEN) */
   private readonly verifyToken: string;
 
-  constructor(private readonly botService: BotService) {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly inboxProcessor: InboxProcessorService,
+    private readonly webhookParser: WebhookParserService,
+    private readonly messageRepo: MessageRepository,
+  ) {
     this.verifyToken = env.WHATSAPP_VERIFY_TOKEN;
   }
 
   /**
    * GET /webhook — verificación del webhook por Meta.
-   *
-   * Meta envía tres query params:
-   * - hub.mode      → debe ser "subscribe"
-   * - hub.verify_token → debe coincidir con WHATSAPP_VERIFY_TOKEN
-   * - hub.challenge  → valor arbitrario que debemos retornar como texto plano
-   *
-   * Respuesta:
-   * - 200 + challenge en texto plano si la verificación es exitosa
-   * - 403 si el token no coincide
    */
   verifyWebhookChallenge = (req: Request, res: Response): void => {
     const mode = req.query['hub.mode'] as string | undefined;
@@ -53,40 +51,79 @@ export class WebhookController {
 
   /**
    * POST /webhook — recibe mensajes y eventos entrantes de WhatsApp.
-   *
-   * La validación de firma HMAC ya fue realizada por metaSignature.middleware.ts
-   * antes de llegar a este handler. Si llegamos aquí, el payload es auténtico.
-   *
-   * Flujo:
-   * 1. Parsear payload Meta
-   * 2. Iterar sobre entries y messages
-   * 3. Delegar cada mensaje al BotService
-   * 4. Responder 200 OK a Meta inmediatamente (Meta requiere < 5 segundos)
    */
   receiveWebhookMessage = (req: Request, res: Response): void => {
-    // Parseo defensivo — si el middleware HMAC pasó pero el body está malformado
-    const payload = req.body as WhatsAppWebhookPayload | undefined;
+    const correlationId = res.locals.correlationId ?? 'unknown';
+    const payload = req.body as WaWebhookPayload | undefined;
 
     if (!payload || typeof payload !== 'object') {
-      console.warn('[WebhookController] Payload inválido recibido');
       res.status(400).json({ error: 'Invalid payload' });
       return;
     }
 
-    // Ignorar eventos que no son de WhatsApp Business
-    if (payload.object !== 'whatsapp_business_account') {
-      console.debug('[WebhookController] Ignorando payload no-WhatsApp:', payload.object);
+    if (!this.webhookParser.isWhatsAppPayload(payload)) {
       res.status(200).json({ status: 'ignored' });
       return;
     }
 
-    // Procesar de forma asíncrona sin bloquear la respuesta a Meta
-    // Supuesto: el procesamiento es rápido (< 4s); para cargas altas considerar una queue
-    this.botService.handleWebhookPayload(payload).catch((err: unknown) => {
-      console.error('[WebhookController] Error procesando payload:', err);
+    // Procesar de forma asíncrona — no bloquear respuesta a Meta
+    this.processAsync(payload, correlationId, req.ip).catch((err: unknown) => {
+      console.error('[WebhookController] Error en processAsync:', err);
     });
 
     // Meta requiere 200 OK en menos de 5 segundos
     res.status(200).json({ status: 'ok' });
   };
+
+  private async processAsync(
+    payload: WaWebhookPayload,
+    correlationId: string,
+    ip?: string,
+  ): Promise<void> {
+    // Log de webhook para auditoría
+    await this.prisma.webhookEventLog.create({
+      data: {
+        correlationId,
+        rawPayload: payload as object,
+        ipAddress: ip,
+        processedOk: true,
+      },
+    });
+
+    const parsed = this.webhookParser.parse(payload);
+
+    // Persistir y encolar mensajes inbound
+    for (const msg of parsed.messages) {
+      const inboxEvent = await this.prisma.inboxEvent.upsert({
+        where: { wamid: msg.wamid },
+        update: {}, // si ya existe (replay), no actualizar
+        create: {
+          wamid: msg.wamid,
+          phone: msg.phone,
+          payload: msg as object,
+          idempotencyKey: msg.wamid,
+        },
+      });
+
+      if (inboxEvent.status === 'pending') {
+        await this.inboxProcessor.enqueue(msg, inboxEvent.id);
+      }
+    }
+
+    // Persistir status de entrega
+    for (const status of parsed.statuses) {
+      try {
+        await this.messageRepo.upsertStatus({
+          wamid: status.wamid,
+          messageId: status.wamid, // upsertStatus busca por wamid internamente
+          status: status.status,
+          timestamp: new Date(parseInt(status.timestamp, 10) * 1000),
+          errorCode: status.errorCode,
+          errorTitle: status.errorTitle,
+        });
+      } catch (err: unknown) {
+        console.warn('[WebhookController] Error guardando status:', err);
+      }
+    }
+  }
 }

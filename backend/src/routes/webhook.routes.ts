@@ -1,46 +1,39 @@
 /**
  * Rutas del webhook de WhatsApp Cloud API.
  *
- * Monta los endpoints GET y POST /webhook.
- * Las instancias de servicios se reciben por parámetro para facilitar
- * el testing y mantener la inyección de dependencias manual.
- *
- * Diagrama de flujo:
- *   GET  /webhook  → WebhookController.verifyWebhookChallenge
- *   POST /webhook  → MetaSignatureMiddleware → WebhookController.receiveWebhookMessage
- *
- * Supuesto: El middleware de firma (metaSignature) se aplica solo al POST
- * porque Meta solo firma los payloads de mensajes, no la verificación GET.
+ * GET  /webhook → verifyWebhookChallenge
+ * POST /webhook → correlationId → metaSignature → idempotency → receiveWebhookMessage
  */
 import { Router } from 'express';
 import { WebhookController } from '../controllers/webhook.controller';
+import { correlationIdMiddleware } from '../middlewares/correlationId.middleware';
+import { createIdempotencyMiddleware } from '../middlewares/idempotency.middleware';
 import { metaSignatureMiddleware } from '../middlewares/metaSignature.middleware';
+import { RedisService } from '../services/redis.service';
 
-/**
- * Crea y retorna el router de webhook con sus dependencias inyectadas.
- *
- * @param controller - Instancia del WebhookController ya construida
- * @returns Router de Express configurado
- */
-export function createWebhookRouter(controller: WebhookController): Router {
+export function createWebhookRouter(controller: WebhookController, redis: RedisService): Router {
   const router = Router();
+  const idempotencyMiddleware = createIdempotencyMiddleware(redis);
 
-  /**
-   * GET /webhook
-   * Meta llama a este endpoint para verificar la suscripción al webhook.
-   * Valida hub.mode, hub.verify_token y responde con hub.challenge.
-   */
+  /** GET /webhook — verificación de suscripción por Meta */
   router.get('/', controller.verifyWebhookChallenge);
 
   /**
    * POST /webhook
-   * Recibe mensajes y eventos de WhatsApp.
-   * El middleware metaSignature valida la firma HMAC-SHA256 antes del controller.
-   *
-   * Nota: express no tipea bien promesas en handlers — se castea a RequestHandler.
+   * Pipeline de middlewares:
+   * 1. correlationId   → genera X-Correlation-Id
+   * 2. metaSignature   → valida HMAC-SHA256
+   * 3. idempotency     → replay protection por wamid
+   * 4. controller      → persiste InboxEvent + encola
    */
-  // eslint-disable-next-line @typescript-eslint/no-misused-promises
-  router.post('/', metaSignatureMiddleware, controller.receiveWebhookMessage);
+  router.post(
+    '/',
+    correlationIdMiddleware,
+    metaSignatureMiddleware,
+    // eslint-disable-next-line @typescript-eslint/no-misused-promises
+    idempotencyMiddleware,
+    controller.receiveWebhookMessage,
+  );
 
   return router;
 }
