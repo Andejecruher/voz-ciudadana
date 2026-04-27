@@ -339,6 +339,82 @@ const schemas: Record<string, SchemaObject> = {
       },
     },
   },
+  ConversationCitizen: {
+    type: 'object',
+    required: ['id', 'phone'],
+    properties: {
+      id: { type: 'string', format: 'uuid' },
+      phone: { type: 'string' },
+      name: { type: 'string', nullable: true },
+    },
+  },
+  ConversationMeta: {
+    type: 'object',
+    properties: {
+      flowState: { $ref: '#/components/schemas/ConversationFlowState' },
+      version: { type: 'integer', example: 0 },
+      lockedByUserId: { type: 'string', format: 'uuid', nullable: true },
+      departmentSlug: { type: 'string', nullable: true },
+      handoverAt: { type: 'string', format: 'date-time', nullable: true },
+    },
+  },
+  ConversationItem: {
+    type: 'object',
+    required: ['id', 'citizen'],
+    properties: {
+      id: { type: 'string', format: 'uuid' },
+      status: { type: 'string', example: 'open' },
+      channel: { type: 'string', example: 'whatsapp' },
+      assignedUserId: { type: 'string', format: 'uuid', nullable: true },
+      assignedDept: { type: 'string', nullable: true },
+      citizen: { $ref: '#/components/schemas/ConversationCitizen' },
+      meta: { $ref: '#/components/schemas/ConversationMeta' },
+      createdAt: { type: 'string', format: 'date-time' },
+      updatedAt: { type: 'string', format: 'date-time' },
+    },
+  },
+  ConversationListResponse: {
+    type: 'object',
+    properties: {
+      items: { type: 'array', items: { $ref: '#/components/schemas/ConversationItem' } },
+      meta: { $ref: '#/components/schemas/CursorPaginationMeta' },
+    },
+  },
+  AssignRequest: {
+    type: 'object',
+    properties: {
+      userId: { type: 'string', format: 'uuid' },
+      departmentSlug: { type: 'string' },
+    },
+  },
+  AssignResponse: {
+    type: 'object',
+    properties: {
+      assigned: { type: 'boolean' },
+      conversationId: { type: 'string', format: 'uuid' },
+      agentId: { type: 'string', format: 'uuid' },
+    },
+  },
+  TransferRequest: {
+    type: 'object',
+    required: ['toUserId'],
+    properties: {
+      toUserId: { type: 'string', format: 'uuid' },
+      departmentSlug: { type: 'string' },
+    },
+  },
+  TransferResponse: {
+    type: 'object',
+    properties: {
+      transferred: { type: 'boolean' },
+      conversationId: { type: 'string', format: 'uuid' },
+      toUserId: { type: 'string', format: 'uuid' },
+    },
+  },
+  ActionResultSimple: {
+    type: 'object',
+    properties: { ok: { type: 'boolean' } },
+  },
   SystemConfig: {
     type: 'object',
     properties: {
@@ -1978,6 +2054,219 @@ const paths: PathsObject = {
       },
     },
   },
+  // ── Conversations ─────────────────────────────────────────────────────────
+  '/api/v1/conversations': {
+    get: {
+      tags: ['Conversations'],
+      summary: 'Listar conversaciones',
+      description: 'Lista conversaciones con paginación cursor. Requiere autenticación.',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          in: 'query',
+          name: 'cursor',
+          schema: { type: 'string', format: 'uuid' },
+          description: 'Cursor para paginación',
+        },
+        {
+          in: 'query',
+          name: 'limit',
+          schema: { type: 'integer', default: 20 },
+          description: 'Límite de elementos',
+        },
+      ],
+      responses: {
+        200: {
+          description: 'Lista de conversaciones paginada',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ConversationListResponse' },
+            },
+          },
+        },
+        401: { $ref: '#/components/responses/Unauthorized' },
+        403: { $ref: '#/components/responses/Forbidden' },
+        500: { $ref: '#/components/responses/InternalError' },
+      },
+    },
+  },
+
+  '/api/v1/conversations/{id}': {
+    get: {
+      tags: ['Conversations'],
+      summary: 'Obtener conversación por ID',
+      description:
+        'Retorna el contexto completo de la conversación (meta, ciudadano, asignaciones).',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { in: 'path', name: 'id', required: true, schema: { type: 'string', format: 'uuid' } },
+      ],
+      responses: {
+        200: {
+          description: 'Contexto de la conversación',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: { conversation: { $ref: '#/components/schemas/ConversationItem' } },
+              },
+            },
+          },
+        },
+        401: { $ref: '#/components/responses/Unauthorized' },
+        404: { $ref: '#/components/responses/NotFound' },
+        500: { $ref: '#/components/responses/InternalError' },
+      },
+    },
+  },
+
+  '/api/v1/conversations/{id}/assign': {
+    post: {
+      tags: ['Conversations'],
+      summary: 'Asignar conversación a un agente',
+      description:
+        'Asigna la conversación a un agente y crea un registro de `Assignment`. Si es necesario, transiciona a HUMAN_FLOW.',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { in: 'path', name: 'id', required: true, schema: { type: 'string', format: 'uuid' } },
+      ],
+      requestBody: {
+        required: false,
+        content: { 'application/json': { schema: { $ref: '#/components/schemas/AssignRequest' } } },
+      },
+      responses: {
+        200: {
+          description: 'Asignación creada',
+          content: {
+            'application/json': { schema: { $ref: '#/components/schemas/AssignResponse' } },
+          },
+        },
+        400: { $ref: '#/components/responses/Unauthorized' },
+        404: { $ref: '#/components/responses/NotFound' },
+        409: { $ref: '#/components/responses/NotFound' },
+        500: { $ref: '#/components/responses/InternalError' },
+      },
+    },
+  },
+
+  '/api/v1/conversations/{id}/transfer': {
+    post: {
+      tags: ['Conversations'],
+      summary: 'Transferir conversación a otro agente',
+      description:
+        'Pasa la asignación de una conversación a otro agente sin forzar cambio de estado a HUMAN_FLOW.',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { in: 'path', name: 'id', required: true, schema: { type: 'string', format: 'uuid' } },
+      ],
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': { schema: { $ref: '#/components/schemas/TransferRequest' } },
+        },
+      },
+      responses: {
+        200: {
+          description: 'Transferencia realizada',
+          content: {
+            'application/json': { schema: { $ref: '#/components/schemas/TransferResponse' } },
+          },
+        },
+        400: { $ref: '#/components/responses/Unauthorized' },
+        404: { $ref: '#/components/responses/NotFound' },
+        409: { $ref: '#/components/responses/NotFound' },
+        500: { $ref: '#/components/responses/InternalError' },
+      },
+    },
+  },
+
+  '/api/v1/conversations/{id}/handover': {
+    post: {
+      tags: ['Conversations'],
+      summary: 'Handover explícito a agente',
+      description: 'Fuerza la transición a HUMAN_FLOW y crea la asignación al agente autenticado.',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { in: 'path', name: 'id', required: true, schema: { type: 'string', format: 'uuid' } },
+      ],
+      responses: {
+        200: {
+          description: 'Handover realizado',
+          content: {
+            'application/json': { schema: { $ref: '#/components/schemas/AssignResponse' } },
+          },
+        },
+        400: { $ref: '#/components/responses/Unauthorized' },
+        404: { $ref: '#/components/responses/NotFound' },
+        409: { $ref: '#/components/responses/NotFound' },
+        500: { $ref: '#/components/responses/InternalError' },
+      },
+    },
+  },
+
+  '/api/v1/conversations/{id}/close': {
+    post: {
+      tags: ['Conversations'],
+      summary: 'Cerrar conversación',
+      description: 'Cierra la conversación (transición a CLOSED).',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { in: 'path', name: 'id', required: true, schema: { type: 'string', format: 'uuid' } },
+      ],
+      responses: {
+        200: {
+          description: 'Conversación cerrada',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  closed: { type: 'boolean' },
+                  conversationId: { type: 'string', format: 'uuid' },
+                },
+              },
+            },
+          },
+        },
+        400: { $ref: '#/components/responses/Unauthorized' },
+        404: { $ref: '#/components/responses/NotFound' },
+        409: { $ref: '#/components/responses/NotFound' },
+        500: { $ref: '#/components/responses/InternalError' },
+      },
+    },
+  },
+
+  '/api/v1/conversations/{id}/reopen': {
+    post: {
+      tags: ['Conversations'],
+      summary: 'Reabrir conversación',
+      description: 'Reabre una conversación cerrada (CLOSED → BOT_FLOW).',
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        { in: 'path', name: 'id', required: true, schema: { type: 'string', format: 'uuid' } },
+      ],
+      responses: {
+        200: {
+          description: 'Conversación reabierta',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  reopened: { type: 'boolean' },
+                  conversationId: { type: 'string', format: 'uuid' },
+                },
+              },
+            },
+          },
+        },
+        400: { $ref: '#/components/responses/Unauthorized' },
+        404: { $ref: '#/components/responses/NotFound' },
+        409: { $ref: '#/components/responses/NotFound' },
+        500: { $ref: '#/components/responses/InternalError' },
+      },
+    },
+  },
 };
 
 // ─── Spec completa ────────────────────────────────────────────────────────────
@@ -2015,6 +2304,7 @@ export const createSwaggerSpec = ({ port }: SwaggerSpecParams): OpenAPIDocument 
     { name: 'Webhook', description: 'Webhook de WhatsApp Cloud API (Meta)' },
     { name: 'Messages', description: 'Envío de mensajes salientes a ciudadanos vía WhatsApp' },
     { name: 'Handover', description: 'Gestión de transferencia bot↔agente de conversaciones' },
+    { name: 'Conversations', description: 'Operaciones y acciones sobre conversaciones' },
     { name: 'Health', description: 'Estado de la aplicación' },
   ],
   components: {

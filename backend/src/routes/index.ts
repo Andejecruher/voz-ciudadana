@@ -4,6 +4,7 @@
  */
 import { Router, type Express, type Request, type Response } from 'express';
 
+import { ConversationsController } from '../controllers/conversations.controller';
 import { HandoverController } from '../controllers/handover.controller';
 import { MessagesController } from '../controllers/messages.controller';
 import { WebhookController } from '../controllers/webhook.controller';
@@ -11,6 +12,7 @@ import { AuditService } from '../services/audit.service';
 import { AuthService } from '../services/auth.service';
 import { BotService } from '../services/bot.service';
 import { CitizensService } from '../services/citizens.service';
+import { ConversationsService } from '../services/conversations.service';
 import { DepartmentsService } from '../services/departments.service';
 import { InboxProcessorService } from '../services/events/inbox-processor.service';
 import { OutboxProcessorService } from '../services/events/outbox-processor.service';
@@ -27,6 +29,7 @@ import { WebhookParserService } from '../services/whatsapp/webhook-parser.servic
 import { WhatsAppProvider } from '../services/whatsapp/whatsapp.provider';
 import { createAuthRouter } from './auth.routes';
 import { createCitizensRouter } from './citizens.routes';
+import { createConversationsRouter } from './conversations.routes';
 import { createDepartmentsRouter } from './departments.routes';
 import { createHandoverRouter } from './handover.routes';
 import { createMessagesRouter } from './messages.routes';
@@ -82,6 +85,12 @@ export function registerRoutes(app: Express, deps: RouteDependencies): void {
   );
   const messagesController = new MessagesController(outboxProcessor);
   const handoverController = new HandoverController(stateMachine, conversationRepo);
+  const conversationsService = new ConversationsService(
+    deps.prisma,
+    conversationRepo,
+    stateMachine,
+  );
+  const conversationsController = new ConversationsController(conversationsService, auditService);
 
   // ── Rutas ──────────────────────────────────────────────────────────────────
 
@@ -94,6 +103,7 @@ export function registerRoutes(app: Express, deps: RouteDependencies): void {
   apiRouter.use('/admin', createDepartmentsRouter(departmentsService, auditService));
   apiRouter.use('/messages', createMessagesRouter(messagesController));
   apiRouter.use('/handover', createHandoverRouter(handoverController));
+  apiRouter.use('/conversations', createConversationsRouter(conversationsController));
 
   app.get('/health', (_req: Request, res: Response) => {
     res.json({ status: 'ok', ts: new Date().toISOString() });

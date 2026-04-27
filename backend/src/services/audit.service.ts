@@ -30,7 +30,14 @@ export type AuditAction =
   | 'department.deactivate'
   | 'auth.login'
   | 'auth.logout'
-  | 'auth.logout_all';
+  | 'auth.logout_all'
+  | 'conversation.list'
+  | 'conversation.get'
+  | 'conversation.assign'
+  | 'conversation.transfer'
+  | 'conversation.handover'
+  | 'conversation.close'
+  | 'conversation.reopen';
 
 export interface AuditEntry {
   actorId?: string | null;
