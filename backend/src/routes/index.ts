@@ -10,20 +10,26 @@ import { WebhookController } from '../controllers/webhook.controller';
 import { AuditService } from '../services/audit.service';
 import { AuthService } from '../services/auth.service';
 import { BotService } from '../services/bot.service';
+import { DepartmentsService } from '../services/departments.service';
 import { InboxProcessorService } from '../services/events/inbox-processor.service';
 import { OutboxProcessorService } from '../services/events/outbox-processor.service';
 import { LockoutService } from '../services/lockout.service';
+import { NeighborhoodsService } from '../services/neighborhoods.service';
 import { ConversationStateMachine } from '../services/orchestrator/conversation-state-machine';
 import { PrismaService } from '../services/prisma.service';
 import { RedisService } from '../services/redis.service';
 import { ConversationRepository } from '../services/repositories/conversation.repository';
 import { MessageRepository } from '../services/repositories/message.repository';
+import { TagsService } from '../services/tags.service';
 import { UserService } from '../services/user.service';
 import { WebhookParserService } from '../services/whatsapp/webhook-parser.service';
 import { WhatsAppProvider } from '../services/whatsapp/whatsapp.provider';
 import { createAuthRouter } from './auth.routes';
+import { createDepartmentsRouter } from './departments.routes';
 import { createHandoverRouter } from './handover.routes';
 import { createMessagesRouter } from './messages.routes';
+import { createNeighborhoodsRouter } from './neighborhoods.routes';
+import { createTagsRouter } from './tags.routes';
 import { createUsersRouter } from './users.routes';
 import { createWebhookRouter } from './webhook.routes';
 
@@ -42,6 +48,9 @@ export function registerRoutes(app: Express, deps: RouteDependencies): void {
   const auditService = new AuditService(deps.prisma);
   const authService = new AuthService(deps.prisma, deps.redis, lockoutService);
   const userService = new UserService(deps.prisma);
+  const neighborhoodsService = new NeighborhoodsService(deps.prisma);
+  const tagsService = new TagsService(deps.prisma);
+  const departmentsService = new DepartmentsService(deps.prisma);
 
   // ── Messaging Core ─────────────────────────────────────────────────────────
   const webhookParser = new WebhookParserService();
@@ -76,6 +85,9 @@ export function registerRoutes(app: Express, deps: RouteDependencies): void {
   apiRouter.use('/webhook', createWebhookRouter(webhookController, deps.redis));
   apiRouter.use('/auth', createAuthRouter(authService, auditService, lockoutService));
   apiRouter.use('/admin', createUsersRouter(userService, auditService));
+  apiRouter.use('/admin', createNeighborhoodsRouter(neighborhoodsService, auditService));
+  apiRouter.use('/admin', createTagsRouter(tagsService, auditService));
+  apiRouter.use('/admin', createDepartmentsRouter(departmentsService, auditService));
   apiRouter.use('/messages', createMessagesRouter(messagesController));
   apiRouter.use('/handover', createHandoverRouter(handoverController));
 
