@@ -1,8 +1,24 @@
+import { ConversationStatus, Prisma } from '@prisma/client';
 import { ConversationFlowState } from '../types/whatsapp.types';
 import { AppError } from '../utils/app-error';
 import { ConversationStateMachine } from './orchestrator/conversation-state-machine';
 import { PrismaService } from './prisma.service';
-import { ConversationRepository } from './repositories/conversation.repository';
+import {
+  type ConversationContext,
+  ConversationRepository,
+} from './repositories/conversation.repository';
+
+type ConversationListItem = Prisma.ConversationGetPayload<{
+  include: {
+    meta: true;
+    citizen: { select: { id: true; phone: true; name: true } };
+  };
+}>;
+
+type ConversationListResult = {
+  items: ConversationListItem[];
+  meta: { nextCursor: string | undefined; hasNextPage: boolean };
+};
 
 export class ConversationsService {
   constructor(
@@ -11,7 +27,9 @@ export class ConversationsService {
     private readonly stateMachine: ConversationStateMachine,
   ) {}
 
-  async list(params: { cursor?: string; limit?: number } = { limit: 20 }) {
+  async list(
+    params: { cursor?: string; limit?: number } = { limit: 20 },
+  ): Promise<ConversationListResult> {
     const limit = params.limit ?? 20;
     const rows = await this.prisma.conversation.findMany({
       orderBy: { id: 'asc' },
@@ -29,14 +47,18 @@ export class ConversationsService {
     };
   }
 
-  async getById(id: string) {
+  async getById(id: string): Promise<ConversationContext> {
     const ctx = await this.conversationRepo.getConversationContext(id);
     if (!ctx) throw AppError.notFound('Conversación no encontrada');
     return ctx;
   }
 
   /** Asigna una conversación a un agente. Si la conversación está en BOT_FLOW, hace handover a HUMAN_FLOW. */
-  async assign(conversationId: string, agentId: string, departmentSlug?: string) {
+  async assign(
+    conversationId: string,
+    agentId: string,
+    departmentSlug?: string,
+  ): Promise<{ assigned: boolean; conversationId: string; agentId: string }> {
     const ctx = await this.conversationRepo.getConversationContext(conversationId);
     if (!ctx?.meta) throw AppError.notFound('Conversación no encontrada');
 
@@ -86,7 +108,11 @@ export class ConversationsService {
   }
 
   /** Transfiere la conversación a otro agente sin forzar cambio de estado. */
-  async transfer(conversationId: string, toUserId: string, departmentSlug?: string) {
+  async transfer(
+    conversationId: string,
+    toUserId: string,
+    departmentSlug?: string,
+  ): Promise<{ transferred: boolean; conversationId: string; toUserId: string }> {
     const ctx = await this.conversationRepo.getConversationContext(conversationId);
     if (!ctx?.meta) throw AppError.notFound('Conversación no encontrada');
 
@@ -116,7 +142,11 @@ export class ConversationsService {
   }
 
   /** Handover explícito: fuerza la transición a HUMAN_FLOW y crea assignment. */
-  async handover(conversationId: string, agentId: string, departmentSlug?: string) {
+  async handover(
+    conversationId: string,
+    agentId: string,
+    departmentSlug?: string,
+  ): Promise<{ handover: boolean; conversationId: string; agentId: string }> {
     const ctx = await this.conversationRepo.getConversationContext(conversationId);
     if (!ctx?.meta) throw AppError.notFound('Conversación no encontrada');
 
@@ -146,7 +176,10 @@ export class ConversationsService {
     return { handover: true, conversationId, agentId };
   }
 
-  async close(conversationId: string, performedBy?: string) {
+  async close(
+    conversationId: string,
+    performedBy?: string,
+  ): Promise<{ closed: boolean; conversationId: string }> {
     const ctx = await this.conversationRepo.getConversationContext(conversationId);
     if (!ctx?.meta) throw AppError.notFound('Conversación no encontrada');
 
@@ -161,13 +194,16 @@ export class ConversationsService {
 
     await this.prisma.conversation.update({
       where: { id: conversationId },
-      data: { status: 'closed' as any },
+      data: { status: ConversationStatus.closed },
     });
 
     return { closed: true, conversationId };
   }
 
-  async reopen(conversationId: string, performedBy?: string) {
+  async reopen(
+    conversationId: string,
+    performedBy?: string,
+  ): Promise<{ reopened: boolean; conversationId: string }> {
     const ctx = await this.conversationRepo.getConversationContext(conversationId);
     if (!ctx?.meta) throw AppError.notFound('Conversación no encontrada');
 
@@ -182,7 +218,7 @@ export class ConversationsService {
 
     await this.prisma.conversation.update({
       where: { id: conversationId },
-      data: { status: 'open' as any },
+      data: { status: ConversationStatus.open },
     });
 
     return { reopened: true, conversationId };

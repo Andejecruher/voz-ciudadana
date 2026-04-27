@@ -2,12 +2,11 @@
  * Repository para Conversation + ConversationMeta.
  * Encapsula toda la lógica de acceso a datos de conversaciones.
  */
-import { ConversationStatus } from '@prisma/client';
-import { Prisma } from '@prisma/client';
+import { ConversationStatus, Prisma } from '@prisma/client';
 import { ConversationFlowState } from '../../types/whatsapp.types';
 import { PrismaService } from '../prisma.service';
 
-type ConversationContext = Prisma.ConversationGetPayload<{
+export type ConversationContext = Prisma.ConversationGetPayload<{
   include: {
     meta: true;
     citizen: {

@@ -1,4 +1,11 @@
-import { Prisma } from '@prisma/client';
+import {
+  CitizenTag,
+  ConversationChannel,
+  ConversationStatus,
+  LeadStatus,
+  Prisma,
+  SourceChannel,
+} from '@prisma/client';
 import { z } from 'zod';
 import { AppError } from '../utils/app-error';
 import { normalizePhoneForStorage } from '../utils/phone-normalizer';
@@ -86,6 +93,34 @@ export type CitizenListResult = {
   };
 };
 
+type CitizenTagWithTag = Prisma.CitizenTagGetPayload<{
+  include: {
+    tag: { select: { id: true; name: true; description: true; color: true; createdAt: true } };
+  };
+}>;
+
+type CitizenProfileResult = {
+  citizen: CitizenResponse;
+  tags: Array<{
+    id: string;
+    name: string;
+    description: string | undefined;
+    color: string | undefined;
+    createdAt: Date;
+  }>;
+  conversationSummary: {
+    totalConversations: number;
+    openConversations: number;
+    lastConversation: {
+      id: string;
+      status: ConversationStatus;
+      channel: ConversationChannel;
+      updatedAt: Date;
+      lastMessage: string | undefined;
+    } | null;
+  };
+};
+
 export class CitizensService {
   constructor(private readonly prisma: PrismaService) {}
 
@@ -97,11 +132,11 @@ export class CitizensService {
     const where: Prisma.CitizenWhereInput = {};
 
     if (params.filters.leadStatus !== undefined) {
-      where.leadStatus = params.filters.leadStatus as any;
+      where.leadStatus = params.filters.leadStatus as LeadStatus;
     }
 
     if (params.filters.sourceChannel !== undefined) {
-      where.sourceChannel = params.filters.sourceChannel as any;
+      where.sourceChannel = params.filters.sourceChannel as SourceChannel;
     }
 
     if (params.filters.neighborhoodId !== undefined) {
@@ -182,7 +217,7 @@ export class CitizensService {
         select: { id: true },
       });
       if (dup) throw AppError.conflict('El teléfono ya está en uso por otro ciudadano');
-      input.phone = phone as any;
+      input.phone = phone;
     }
 
     const updated = await this.prisma.citizen.update({
@@ -210,7 +245,11 @@ export class CitizensService {
     return this.toResponse(existing);
   }
 
-  async assignTag(citizenId: string, tagId: string, assignedById?: string) {
+  async assignTag(
+    citizenId: string,
+    tagId: string,
+    assignedById?: string,
+  ): Promise<CitizenTagWithTag> {
     const citizen = await this.prisma.citizen.findUnique({
       where: { id: citizenId },
       select: { id: true },
@@ -236,7 +275,7 @@ export class CitizensService {
     return created;
   }
 
-  async removeTag(citizenId: string, tagId: string) {
+  async removeTag(citizenId: string, tagId: string): Promise<CitizenTag> {
     const existing = await this.prisma.citizenTag.findFirst({ where: { citizenId, tagId } });
     if (!existing) throw AppError.notFound('Etiqueta no asignada a ese ciudadano');
 
@@ -244,7 +283,7 @@ export class CitizensService {
     return existing;
   }
 
-  async getProfile(id: string) {
+  async getProfile(id: string): Promise<CitizenProfileResult> {
     const citizen = await this.prisma.citizen.findUnique({
       where: { id },
       include: {
@@ -296,7 +335,7 @@ export class CitizensService {
     };
 
     return {
-      citizen: this.toResponse(citizen as any),
+      citizen: this.toResponse(citizen as unknown as CitizenRecord),
       tags: citizen.citizenTags.map((ct) => ({
         id: ct.tag.id,
         name: ct.tag.name,
