@@ -1,7 +1,7 @@
 /**
  * Repository para Message y MessageStatus.
  */
-import { Message, MessageDirection, MessageStatus, MessageType } from '@prisma/client';
+import { Attachment, Message, MessageDirection, MessageStatus, MessageType } from '@prisma/client';
 import { PrismaService } from '../prisma.service';
 
 export interface CreateMessageInput {
@@ -12,6 +12,11 @@ export interface CreateMessageInput {
   externalMessageId?: string;
   meta?: Record<string, unknown>;
 }
+
+export type MessageWithStatuses = Message & {
+  statuses: MessageStatus[];
+  attachmentsViaMessageId: Attachment[];
+};
 
 export class MessageRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -71,5 +76,32 @@ export class MessageRepository {
       where: { wamid },
       orderBy: { timestamp: 'asc' },
     });
+  }
+
+  /**
+   * Lista mensajes de una conversación en orden cronológico ascendente,
+   * con sus statuses de entrega y attachments adjuntos.
+   * Estrategia limit+1 para cursor-based pagination.
+   */
+  async listByConversation(params: {
+    conversationId: string;
+    cursor?: string;
+    limit: number;
+  }): Promise<{ items: MessageWithStatuses[]; hasNextPage: boolean }> {
+    const rows = await this.prisma.message.findMany({
+      where: { conversationId: params.conversationId },
+      orderBy: { createdAt: 'asc' },
+      take: params.limit + 1,
+      ...(params.cursor ? { cursor: { id: params.cursor }, skip: 1 } : {}),
+      include: {
+        statuses: { orderBy: { timestamp: 'asc' } },
+        attachmentsViaMessageId: true,
+      },
+    });
+
+    const hasNextPage = rows.length > params.limit;
+    const items = hasNextPage ? rows.slice(0, params.limit) : rows;
+
+    return { items, hasNextPage };
   }
 }

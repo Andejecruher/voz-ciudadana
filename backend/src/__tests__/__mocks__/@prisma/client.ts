@@ -33,10 +33,18 @@ export enum MessageType {
   system = 'system',
 }
 
+export enum MessageStatusValue {
+  sent = 'sent',
+  delivered = 'delivered',
+  read = 'read',
+  failed = 'failed',
+}
+
 export enum ConversationStatus {
   open = 'open',
+  in_progress = 'in_progress',
+  resolved = 'resolved',
   closed = 'closed',
-  pending = 'pending',
 }
 
 export const Prisma = {

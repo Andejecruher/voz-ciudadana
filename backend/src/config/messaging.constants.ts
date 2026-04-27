@@ -33,6 +33,9 @@ export const REDIS_KEYS = {
 
   /** Estado de conversación en orquestador */
   CONV_STATE: (conversationId: string) => `conv:state:${conversationId}`,
+
+  /** Idempotencia de mensajes outbound desde el dashboard (TTL 24h) */
+  MSG_IDEMPOTENCY: (key: string) => `msg:idem:${key}`,
 } as const;
 
 // ─── Queue / Retry config ─────────────────────────────────────────────────────
