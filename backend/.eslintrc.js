@@ -12,7 +12,7 @@ module.exports = {
 
   parser: '@typescript-eslint/parser',
   parserOptions: {
-    project: ['./tsconfig.json', './prisma/seed/tsconfig.json'],
+    project: ['./tsconfig.json', './tsconfig.test.json', './prisma/seed/tsconfig.json'],
     tsconfigRootDir: __dirname,
     sourceType: 'module',
     ecmaVersion: 2021,
@@ -74,4 +74,30 @@ module.exports = {
   },
 
   ignorePatterns: ['dist/', 'node_modules/', '*.js', '!.eslintrc.js', 'prisma/'],
+
+  overrides: [
+    {
+      // Archivos de test — reglas más permisivas para mocks y utilidades de testing
+      files: ['src/__tests__/**/*.ts', '**/*.test.ts', '**/*.spec.ts'],
+      rules: {
+        // @ts-ignore es aceptable en mocks de test
+        '@typescript-eslint/ban-ts-comment': 'off',
+        // require() es aceptable en tests para require dinámico
+        '@typescript-eslint/no-require-imports': 'off',
+        '@typescript-eslint/no-var-requires': 'off',
+        // Funciones async sin await son comunes en jest.fn() mocks
+        '@typescript-eslint/require-await': 'off',
+        // unsafe-any es aceptable en mocks de test
+        '@typescript-eslint/no-unsafe-assignment': 'off',
+        '@typescript-eslint/no-unsafe-member-access': 'off',
+        '@typescript-eslint/no-unsafe-call': 'off',
+        '@typescript-eslint/no-unsafe-return': 'off',
+        '@typescript-eslint/no-unsafe-argument': 'off',
+        '@typescript-eslint/no-explicit-any': 'off',
+        // Variables no usadas en tests (imports para typing, vars de debugging)
+        '@typescript-eslint/no-unused-vars': 'off',
+        'no-unused-vars': 'off',
+      },
+    },
+  ],
 };

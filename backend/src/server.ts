@@ -15,13 +15,13 @@
  * - Los imports del backend usan rutas relativas para evitar dependencia de baseUrl/paths
  */
 import cors from 'cors';
-import express, { NextFunction, Request, Response } from 'express';
+import express, { Request, Response } from 'express';
 import helmet from 'helmet';
 import swaggerUi from 'swagger-ui-express';
 
 import { env } from './config/env.config';
 import { createSwaggerSpec } from './config/swagger.config';
-import { AppError } from './utils/app-error';
+import { errorHandler } from './middlewares/errorHandler';
 
 // Servicios de infraestructura
 import { PrismaService } from './services/prisma.service';
@@ -114,21 +114,9 @@ app.get('/api-docs.json', (_req: Request, res: Response) => {
 registerRoutes(app, { prisma, redis });
 
 // ── Manejo global de errores ──────────────────────────────────────────────────
-// El cuarto parámetro `_next` es obligatorio para que Express reconozca el handler de error
-app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
-  if (err instanceof AppError) {
-    res.status(err.statusCode).json({
-      error: err.message,
-      ...(err.code ? { code: err.code } : {}),
-    });
-    return;
-  }
-
-  // Error inesperado — loguear pero no exponer detalles
-  const message = err instanceof Error ? err.message : 'Unknown error';
-  console.error('[ErrorHandler]', message);
-  res.status(500).json({ error: 'Internal server error' });
-});
+// errorHandler normaliza AppError, ValidationError y errores genéricos al
+// formato { success: false, error, code? } definido en utils/api-response.ts
+app.use(errorHandler);
 
 // ── Arranque ──────────────────────────────────────────────────────────────────
 async function start(): Promise<void> {
