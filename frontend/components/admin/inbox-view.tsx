@@ -1,13 +1,13 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { ChatList } from './chat-list'
-import { ChatWindow } from './chat-window'
-import { CitizenProfile } from './citizen-profile'
-import { type Chat } from '@/lib/mock-data'
+import { useState } from 'react';
+import { ChatList } from './chat-list';
+import { ChatWindow } from './chat-window';
+import { CitizenProfile } from './citizen-profile';
+import { type Chat } from '@/lib/mock-data';
 
 export function InboxView() {
-  const [selectedChat, setSelectedChat] = useState<Chat | null>(null)
+  const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
 
   return (
     <div className="flex h-full">
@@ -22,5 +22,5 @@ export function InboxView() {
       {/* Column C: Citizen profile */}
       <CitizenProfile chat={selectedChat} />
     </div>
-  )
+  );
 }

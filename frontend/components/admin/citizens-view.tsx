@@ -1,7 +1,7 @@
-'use client'
+'use client';
 
-import { useState, useMemo } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useState, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
   Download,
@@ -13,18 +13,18 @@ import {
   ChevronUp,
   ChevronDown,
   MessageSquare,
-} from 'lucide-react'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
+} from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
-import { cn } from '@/lib/utils'
-import { MOCK_CHATS, type Chat } from '@/lib/mock-data'
+} from '@/components/ui/select';
+import { cn } from '@/lib/utils';
+import { MOCK_CHATS, type Chat } from '@/lib/mock-data';
 
 // Extended citizen list derived from mock chats + extra rows
 const ALL_CITIZENS = [
@@ -78,15 +78,27 @@ const ALL_CITIZENS = [
     registeredAt: '2025-04-01',
     messages: [],
   },
-]
+];
 
-const BARRIOS = ['Todos los barrios', 'Centro', 'La Candelaria', 'Santo Domingo', 'El Mirador', 'Los Ángeles', 'La Joya', 'San Sebastián', 'Barrio Nuevo', 'Colonia Morelos', 'La Esperanza']
+const BARRIOS = [
+  'Todos los barrios',
+  'Centro',
+  'La Candelaria',
+  'Santo Domingo',
+  'El Mirador',
+  'Los Ángeles',
+  'La Joya',
+  'San Sebastián',
+  'Barrio Nuevo',
+  'Colonia Morelos',
+  'La Esperanza',
+];
 
-type SortKey = 'name' | 'barrio' | 'registeredAt'
-type SortDir = 'asc' | 'desc'
+type SortKey = 'name' | 'barrio' | 'registeredAt';
+type SortDir = 'asc' | 'desc';
 
 function exportCSV(data: typeof ALL_CITIZENS) {
-  const header = ['Nombre', 'Teléfono', 'Barrio', 'Intereses', 'Estatus', 'Fecha de registro']
+  const header = ['Nombre', 'Teléfono', 'Barrio', 'Intereses', 'Estatus', 'Fecha de registro'];
   const rows = data.map((c) => [
     c.name,
     c.phone,
@@ -94,56 +106,61 @@ function exportCSV(data: typeof ALL_CITIZENS) {
     c.interests.join(' | '),
     c.status,
     new Date(c.registeredAt).toLocaleDateString('es-MX'),
-  ])
-  const csv = [header, ...rows].map((r) => r.join(',')).join('\n')
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = 'ciudadanos-voz-ciudadana.csv'
-  a.click()
-  URL.revokeObjectURL(url)
+  ]);
+  const csv = [header, ...rows].map((r) => r.join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'ciudadanos-voz-ciudadana.csv';
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 export function CitizensView() {
-  const [search, setSearch] = useState('')
-  const [barrioFilter, setBarrioFilter] = useState('Todos los barrios')
-  const [statusFilter, setStatusFilter] = useState<'all' | 'verificado' | 'pendiente'>('all')
-  const [sortKey, setSortKey] = useState<SortKey>('registeredAt')
-  const [sortDir, setSortDir] = useState<SortDir>('desc')
-  const [historyChat, setHistoryChat] = useState<(typeof ALL_CITIZENS)[0] | null>(null)
+  const [search, setSearch] = useState('');
+  const [barrioFilter, setBarrioFilter] = useState('Todos los barrios');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'verificado' | 'pendiente'>('all');
+  const [sortKey, setSortKey] = useState<SortKey>('registeredAt');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [historyChat, setHistoryChat] = useState<(typeof ALL_CITIZENS)[0] | null>(null);
 
   const filtered = useMemo(() => {
     let data = ALL_CITIZENS.filter((c) => {
       const matchSearch =
         c.name.toLowerCase().includes(search.toLowerCase()) ||
         c.phone.includes(search) ||
-        c.barrio.toLowerCase().includes(search.toLowerCase())
-      const matchBarrio = barrioFilter === 'Todos los barrios' || c.barrio === barrioFilter
-      const matchStatus = statusFilter === 'all' || c.status === statusFilter
-      return matchSearch && matchBarrio && matchStatus
-    })
+        c.barrio.toLowerCase().includes(search.toLowerCase());
+      const matchBarrio = barrioFilter === 'Todos los barrios' || c.barrio === barrioFilter;
+      const matchStatus = statusFilter === 'all' || c.status === statusFilter;
+      return matchSearch && matchBarrio && matchStatus;
+    });
 
     data = [...data].sort((a, b) => {
-      let va = a[sortKey]
-      let vb = b[sortKey]
-      if (sortDir === 'asc') return va < vb ? -1 : va > vb ? 1 : 0
-      return va > vb ? -1 : va < vb ? 1 : 0
-    })
+      let va = a[sortKey];
+      let vb = b[sortKey];
+      if (sortDir === 'asc') return va < vb ? -1 : va > vb ? 1 : 0;
+      return va > vb ? -1 : va < vb ? 1 : 0;
+    });
 
-    return data
-  }, [search, barrioFilter, statusFilter, sortKey, sortDir])
+    return data;
+  }, [search, barrioFilter, statusFilter, sortKey, sortDir]);
 
   function toggleSort(key: SortKey) {
-    if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
-    else { setSortKey(key); setSortDir('asc') }
+    if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else {
+      setSortKey(key);
+      setSortDir('asc');
+    }
   }
 
   function SortIcon({ col }: { col: SortKey }) {
-    if (sortKey !== col) return <ChevronUp className="w-3.5 h-3.5 text-muted-foreground/40" />
-    return sortDir === 'asc'
-      ? <ChevronUp className="w-3.5 h-3.5 text-primary" />
-      : <ChevronDown className="w-3.5 h-3.5 text-primary" />
+    if (sortKey !== col) return <ChevronUp className="w-3.5 h-3.5 text-muted-foreground/40" />;
+    return sortDir === 'asc' ? (
+      <ChevronUp className="w-3.5 h-3.5 text-primary" />
+    ) : (
+      <ChevronDown className="w-3.5 h-3.5 text-primary" />
+    );
   }
 
   return (
@@ -157,12 +174,7 @@ export function CitizensView() {
               {filtered.length} voces registradas
             </p>
           </div>
-          <Button
-            onClick={() => exportCSV(filtered)}
-            variant="outline"
-            size="sm"
-            className="gap-2"
-          >
+          <Button onClick={() => exportCSV(filtered)} variant="outline" size="sm" className="gap-2">
             <Download className="w-4 h-4" />
             Exportar CSV
           </Button>
@@ -185,7 +197,11 @@ export function CitizensView() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {BARRIOS.map((b) => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+              {BARRIOS.map((b) => (
+                <SelectItem key={b} value={b}>
+                  {b}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <div className="flex gap-1">
@@ -197,7 +213,7 @@ export function CitizensView() {
                   'px-3 py-1.5 rounded-full text-xs font-medium transition-colors capitalize',
                   statusFilter === s
                     ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                    : 'bg-muted text-muted-foreground hover:bg-muted/80',
                 )}
               >
                 {s === 'all' ? 'Todos' : s === 'verificado' ? 'Verificado' : 'Pendiente'}
@@ -355,7 +371,9 @@ export function CitizensView() {
                   </div>
                   <div>
                     <h3 className="font-black text-foreground">{historyChat.name}</h3>
-                    <p className="text-xs text-muted-foreground">{historyChat.barrio} · {historyChat.phone}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {historyChat.barrio} · {historyChat.phone}
+                    </p>
                   </div>
                 </div>
                 <button
@@ -384,7 +402,7 @@ export function CitizensView() {
                       key={msg.id}
                       className={cn(
                         'flex',
-                        msg.role === 'outbound' ? 'justify-end' : 'justify-start'
+                        msg.role === 'outbound' ? 'justify-end' : 'justify-start',
                       )}
                     >
                       <div
@@ -392,11 +410,18 @@ export function CitizensView() {
                           'max-w-[80%] rounded-2xl px-4 py-2.5 text-sm',
                           msg.role === 'outbound'
                             ? 'bg-primary text-primary-foreground rounded-br-sm'
-                            : 'bg-muted text-foreground rounded-bl-sm border border-border'
+                            : 'bg-muted text-foreground rounded-bl-sm border border-border',
                         )}
                       >
                         <p className="leading-relaxed">{msg.text}</p>
-                        <p className={cn('text-[10px] mt-1', msg.role === 'outbound' ? 'text-primary-foreground/50 text-right' : 'text-muted-foreground')}>
+                        <p
+                          className={cn(
+                            'text-[10px] mt-1',
+                            msg.role === 'outbound'
+                              ? 'text-primary-foreground/50 text-right'
+                              : 'text-muted-foreground',
+                          )}
+                        >
                           {msg.time}
                         </p>
                       </div>
@@ -409,5 +434,5 @@ export function CitizensView() {
         )}
       </AnimatePresence>
     </div>
-  )
+  );
 }

@@ -1,31 +1,31 @@
-export type ChatStatus = 'nuevo' | 'en_proceso' | 'resuelto'
-export type MessageRole = 'inbound' | 'outbound'
+export type ChatStatus = 'nuevo' | 'en_proceso' | 'resuelto';
+export type MessageRole = 'inbound' | 'outbound';
 
 export interface Message {
-  id: string
-  role: MessageRole
-  text: string
-  time: string
+  id: string;
+  role: MessageRole;
+  text: string;
+  time: string;
 }
 
 export interface Citizen {
-  id: string
-  name: string
-  phone: string
-  colonia: string
-  interests: string[]
-  registeredAt: string
-  department?: string
+  id: string;
+  name: string;
+  phone: string;
+  colonia: string;
+  interests: string[];
+  registeredAt: string;
+  department?: string;
 }
 
 export interface Chat {
-  id: string
-  citizen: Citizen
-  status: ChatStatus
-  lastMessage: string
-  lastTime: string
-  unread: number
-  messages: Message[]
+  id: string;
+  citizen: Citizen;
+  status: ChatStatus;
+  lastMessage: string;
+  lastTime: string;
+  unread: number;
+  messages: Message[];
 }
 
 export const MOCK_CHATS: Chat[] = [
@@ -45,9 +45,24 @@ export const MOCK_CHATS: Chat[] = [
     lastTime: '10:42 a.m.',
     unread: 3,
     messages: [
-      { id: 'm1', role: 'inbound', text: 'Buenos días, quiero reportar un problema urgente en mi barrio.', time: '10:38 a.m.' },
-      { id: 'm2', role: 'outbound', text: '¡Hola María! Con gusto te atendemos. ¿Cuál es el problema?', time: '10:39 a.m.' },
-      { id: 'm3', role: 'inbound', text: 'Llevamos 3 días sin agua en toda La Candelaria.', time: '10:42 a.m.' },
+      {
+        id: 'm1',
+        role: 'inbound',
+        text: 'Buenos días, quiero reportar un problema urgente en mi barrio.',
+        time: '10:38 a.m.',
+      },
+      {
+        id: 'm2',
+        role: 'outbound',
+        text: '¡Hola María! Con gusto te atendemos. ¿Cuál es el problema?',
+        time: '10:39 a.m.',
+      },
+      {
+        id: 'm3',
+        role: 'inbound',
+        text: 'Llevamos 3 días sin agua en toda La Candelaria.',
+        time: '10:42 a.m.',
+      },
     ],
   },
   {
@@ -66,9 +81,24 @@ export const MOCK_CHATS: Chat[] = [
     lastTime: 'Ayer',
     unread: 0,
     messages: [
-      { id: 'm1', role: 'inbound', text: 'Los productores de maíz de Santo Domingo no recibieron el apoyo prometido este ciclo.', time: '09:15 a.m.' },
-      { id: 'm2', role: 'outbound', text: 'Recibimos tu reporte, Carlos. Lo estamos escalando a Desarrollo Rural.', time: '09:20 a.m.' },
-      { id: 'm3', role: 'inbound', text: 'Gracias por la atención, esperamos la resolución pronto.', time: '09:45 a.m.' },
+      {
+        id: 'm1',
+        role: 'inbound',
+        text: 'Los productores de maíz de Santo Domingo no recibieron el apoyo prometido este ciclo.',
+        time: '09:15 a.m.',
+      },
+      {
+        id: 'm2',
+        role: 'outbound',
+        text: 'Recibimos tu reporte, Carlos. Lo estamos escalando a Desarrollo Rural.',
+        time: '09:20 a.m.',
+      },
+      {
+        id: 'm3',
+        role: 'inbound',
+        text: 'Gracias por la atención, esperamos la resolución pronto.',
+        time: '09:45 a.m.',
+      },
     ],
   },
   {
@@ -87,9 +117,24 @@ export const MOCK_CHATS: Chat[] = [
     lastTime: 'Lun',
     unread: 0,
     messages: [
-      { id: 'm1', role: 'inbound', text: 'Necesito información sobre el centro de salud más cercano en El Mirador.', time: '02:00 p.m.' },
-      { id: 'm2', role: 'outbound', text: 'Hola Sofía, el centro de salud más cercano está en Av. Central #12, Cintalapa Centro.', time: '02:05 p.m.' },
-      { id: 'm3', role: 'inbound', text: 'Excelente atención, muchas gracias por escucharnos.', time: '02:10 p.m.' },
+      {
+        id: 'm1',
+        role: 'inbound',
+        text: 'Necesito información sobre el centro de salud más cercano en El Mirador.',
+        time: '02:00 p.m.',
+      },
+      {
+        id: 'm2',
+        role: 'outbound',
+        text: 'Hola Sofía, el centro de salud más cercano está en Av. Central #12, Cintalapa Centro.',
+        time: '02:05 p.m.',
+      },
+      {
+        id: 'm3',
+        role: 'inbound',
+        text: 'Excelente atención, muchas gracias por escucharnos.',
+        time: '02:10 p.m.',
+      },
     ],
   },
   {
@@ -107,7 +152,12 @@ export const MOCK_CHATS: Chat[] = [
     lastTime: '11:05 a.m.',
     unread: 1,
     messages: [
-      { id: 'm1', role: 'inbound', text: 'Hay alumbrado público fundido en toda la cuadra desde hace semanas.', time: '11:05 a.m.' },
+      {
+        id: 'm1',
+        role: 'inbound',
+        text: 'Hay alumbrado público fundido en toda la cuadra desde hace semanas.',
+        time: '11:05 a.m.',
+      },
     ],
   },
   {
@@ -126,9 +176,24 @@ export const MOCK_CHATS: Chat[] = [
     lastTime: 'Mar',
     unread: 2,
     messages: [
-      { id: 'm1', role: 'inbound', text: 'El camino rural que lleva al ejido está muy dañado y los productores no pueden pasar.', time: 'Mar 09:00 a.m.' },
-      { id: 'm2', role: 'outbound', text: 'Hola Ana, ¿podrías enviarnos una foto de la ubicación exacta del daño?', time: 'Mar 09:10 a.m.' },
-      { id: 'm3', role: 'inbound', text: 'Adjunto las fotos del camino dañado, espero pronta respuesta.', time: 'Mar 09:30 a.m.' },
+      {
+        id: 'm1',
+        role: 'inbound',
+        text: 'El camino rural que lleva al ejido está muy dañado y los productores no pueden pasar.',
+        time: 'Mar 09:00 a.m.',
+      },
+      {
+        id: 'm2',
+        role: 'outbound',
+        text: 'Hola Ana, ¿podrías enviarnos una foto de la ubicación exacta del daño?',
+        time: 'Mar 09:10 a.m.',
+      },
+      {
+        id: 'm3',
+        role: 'inbound',
+        text: 'Adjunto las fotos del camino dañado, espero pronta respuesta.',
+        time: 'Mar 09:30 a.m.',
+      },
     ],
   },
   {
@@ -146,11 +211,21 @@ export const MOCK_CHATS: Chat[] = [
     lastTime: '8:30 a.m.',
     unread: 2,
     messages: [
-      { id: 'm1', role: 'inbound', text: 'Buenos días. Soy de La Joya y tengo un reporte urgente.', time: '8:25 a.m.' },
-      { id: 'm2', role: 'inbound', text: 'El agua que llega huele raro y los niños se han enfermado.', time: '8:30 a.m.' },
+      {
+        id: 'm1',
+        role: 'inbound',
+        text: 'Buenos días. Soy de La Joya y tengo un reporte urgente.',
+        time: '8:25 a.m.',
+      },
+      {
+        id: 'm2',
+        role: 'inbound',
+        text: 'El agua que llega huele raro y los niños se han enfermado.',
+        time: '8:30 a.m.',
+      },
     ],
   },
-]
+];
 
 export const DEPARTMENTS = [
   'Agua y Saneamiento',
@@ -161,10 +236,18 @@ export const DEPARTMENTS = [
   'Desarrollo Rural',
   'Empleo y Economía',
   'Jurídico',
-]
+];
 
-export const STATUS_CONFIG: Record<ChatStatus, { label: string; color: string; bg: string; dot: string }> = {
+export const STATUS_CONFIG: Record<
+  ChatStatus,
+  { label: string; color: string; bg: string; dot: string }
+> = {
   nuevo: { label: 'Nuevo', color: 'text-amber-600', bg: 'bg-amber-100', dot: 'bg-amber-500' },
-  en_proceso: { label: 'En proceso', color: 'text-primary', bg: 'bg-primary/10', dot: 'bg-primary' },
+  en_proceso: {
+    label: 'En proceso',
+    color: 'text-primary',
+    bg: 'bg-primary/10',
+    dot: 'bg-primary',
+  },
   resuelto: { label: 'Resuelto', color: 'text-accent', bg: 'bg-accent/10', dot: 'bg-accent' },
-}
+};

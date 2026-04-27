@@ -1,7 +1,7 @@
-'use client'
+'use client';
 
-import { useState, useMemo } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useState, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus,
   MapPin,
@@ -21,8 +21,8 @@ import {
   TreePine,
   ShieldCheck,
   Droplets,
-} from 'lucide-react'
-import { es } from 'date-fns/locale'
+} from 'lucide-react';
+import { es } from 'date-fns/locale';
 import {
   format,
   isSameDay,
@@ -33,29 +33,29 @@ import {
   addMonths,
   subMonths,
   isToday,
-} from 'date-fns'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { cn } from '@/lib/utils'
+} from 'date-fns';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { cn } from '@/lib/utils';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type EventType = 'mitin' | 'vecinal' | 'brigada' | 'foro'
+type EventType = 'mitin' | 'vecinal' | 'brigada' | 'foro';
 
 interface AdminEvento {
-  id: string
-  title: string
-  location: string
-  barrio: string
-  date: Date
-  time: string
-  confirmados: number
-  description: string
-  type: EventType
-  responsible: string
-  needs: string[]
+  id: string;
+  title: string;
+  location: string;
+  barrio: string;
+  date: Date;
+  time: string;
+  confirmados: number;
+  description: string;
+  type: EventType;
+  responsible: string;
+  needs: string[];
 }
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -92,7 +92,7 @@ const EVENT_TYPE_CONFIG: Record<
     dot: 'bg-[#1E40AF]',
     icon: <ShieldCheck className="w-3 h-3" />,
   },
-}
+};
 
 const BARRIOS = [
   'La Candelaria',
@@ -105,7 +105,7 @@ const BARRIOS = [
   'Barrio Nuevo',
   'San Isidro',
   'Colonia Las Palmas',
-]
+];
 
 const RESPONSABLES = [
   'Coordinación General',
@@ -115,9 +115,9 @@ const RESPONSABLES = [
   'Equipo de Salud',
   'Equipo de Campo',
   'Relaciones Comunitarias',
-]
+];
 
-const NOW = new Date()
+const NOW = new Date();
 
 const INITIAL_EVENTS: AdminEvento[] = [
   {
@@ -131,7 +131,11 @@ const INITIAL_EVENTS: AdminEvento[] = [
     type: 'mitin',
     responsible: 'Coordinación General',
     description: 'Gran mitin con la candidata en el corazón de La Candelaria.',
-    needs: ['Agua potable en 3 calles sin servicio', 'Alumbrado público dañado desde enero', 'Bacheo urgente en Calle Hidalgo'],
+    needs: [
+      'Agua potable en 3 calles sin servicio',
+      'Alumbrado público dañado desde enero',
+      'Bacheo urgente en Calle Hidalgo',
+    ],
   },
   {
     id: 'e2',
@@ -198,18 +202,18 @@ const INITIAL_EVENTS: AdminEvento[] = [
     description: 'Mitin masivo de cierre de fase territorial.',
     needs: ['Solicitud de sonido y equipo', 'Seguridad perimetral'],
   },
-]
+];
 
 type FormState = {
-  title: string
-  barrio: string
-  location: string
-  date: string
-  time: string
-  type: EventType
-  responsible: string
-  description: string
-}
+  title: string;
+  barrio: string;
+  location: string;
+  date: string;
+  time: string;
+  type: EventType;
+  responsible: string;
+  description: string;
+};
 
 const EMPTY_FORM: FormState = {
   title: '',
@@ -220,56 +224,56 @@ const EMPTY_FORM: FormState = {
   type: 'vecinal',
   responsible: '',
   description: '',
-}
+};
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function EventsView() {
-  const [events, setEvents] = useState<AdminEvento[]>(INITIAL_EVENTS)
-  const [currentMonth, setCurrentMonth] = useState(new Date(NOW.getFullYear(), NOW.getMonth(), 1))
-  const [selectedEvent, setSelectedEvent] = useState<AdminEvento | null>(null)
-  const [showModal, setShowModal] = useState(false)
-  const [viewMode, setViewMode] = useState<'calendar' | 'agenda'>('calendar')
-  const [filterBarrio, setFilterBarrio] = useState<string>('all')
-  const [filterResponsable, setFilterResponsable] = useState<string>('all')
-  const [form, setForm] = useState<FormState>(EMPTY_FORM)
-  const [loading, setLoading] = useState(false)
-  const [saved, setSaved] = useState(false)
-  const [reminderSent, setReminderSent] = useState(false)
+  const [events, setEvents] = useState<AdminEvento[]>(INITIAL_EVENTS);
+  const [currentMonth, setCurrentMonth] = useState(new Date(NOW.getFullYear(), NOW.getMonth(), 1));
+  const [selectedEvent, setSelectedEvent] = useState<AdminEvento | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [viewMode, setViewMode] = useState<'calendar' | 'agenda'>('calendar');
+  const [filterBarrio, setFilterBarrio] = useState<string>('all');
+  const [filterResponsable, setFilterResponsable] = useState<string>('all');
+  const [form, setForm] = useState<FormState>(EMPTY_FORM);
+  const [loading, setLoading] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [reminderSent, setReminderSent] = useState(false);
 
   // Filter events
   const filteredEvents = useMemo(() => {
     return events.filter((e) => {
-      const matchBarrio = filterBarrio === 'all' || e.barrio === filterBarrio
-      const matchResp = filterResponsable === 'all' || e.responsible === filterResponsable
-      return matchBarrio && matchResp
-    })
-  }, [events, filterBarrio, filterResponsable])
+      const matchBarrio = filterBarrio === 'all' || e.barrio === filterBarrio;
+      const matchResp = filterResponsable === 'all' || e.responsible === filterResponsable;
+      return matchBarrio && matchResp;
+    });
+  }, [events, filterBarrio, filterResponsable]);
 
   // Calendar grid
   const daysInMonth = useMemo(() => {
-    const start = startOfMonth(currentMonth)
-    const end = endOfMonth(currentMonth)
-    return eachDayOfInterval({ start, end })
-  }, [currentMonth])
+    const start = startOfMonth(currentMonth);
+    const end = endOfMonth(currentMonth);
+    return eachDayOfInterval({ start, end });
+  }, [currentMonth]);
 
-  const startPadding = (getDay(startOfMonth(currentMonth)) + 6) % 7 // Mon-start
+  const startPadding = (getDay(startOfMonth(currentMonth)) + 6) % 7; // Mon-start
 
   function eventsForDay(day: Date) {
-    return filteredEvents.filter((e) => isSameDay(e.date, day))
+    return filteredEvents.filter((e) => isSameDay(e.date, day));
   }
 
   // Sort agenda by date
   const agendaEvents = useMemo(() => {
-    return [...filteredEvents].sort((a, b) => a.date.getTime() - b.date.getTime())
-  }, [filteredEvents])
+    return [...filteredEvents].sort((a, b) => a.date.getTime() - b.date.getTime());
+  }, [filteredEvents]);
 
   async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!form.title || !form.barrio || !form.date || !form.time || !form.responsible) return
-    setLoading(true)
-    await new Promise((r) => setTimeout(r, 900))
-    const [year, month, day] = form.date.split('-').map(Number)
+    e.preventDefault();
+    if (!form.title || !form.barrio || !form.date || !form.time || !form.responsible) return;
+    setLoading(true);
+    await new Promise((r) => setTimeout(r, 900));
+    const [year, month, day] = form.date.split('-').map(Number);
     setEvents((prev) => [
       ...prev,
       {
@@ -285,26 +289,26 @@ export function EventsView() {
         description: form.description,
         needs: [],
       },
-    ])
-    setLoading(false)
-    setSaved(true)
+    ]);
+    setLoading(false);
+    setSaved(true);
     setTimeout(() => {
-      setSaved(false)
-      setShowModal(false)
-      setForm(EMPTY_FORM)
-    }, 1500)
+      setSaved(false);
+      setShowModal(false);
+      setForm(EMPTY_FORM);
+    }, 1500);
   }
 
   function setField(field: keyof FormState, val: string) {
-    setForm((p) => ({ ...p, [field]: val }))
+    setForm((p) => ({ ...p, [field]: val }));
   }
 
   function sendReminder() {
-    setReminderSent(true)
-    setTimeout(() => setReminderSent(false), 3000)
+    setReminderSent(true);
+    setTimeout(() => setReminderSent(false), 3000);
   }
 
-  const cfg = selectedEvent ? EVENT_TYPE_CONFIG[selectedEvent.type] : null
+  const cfg = selectedEvent ? EVENT_TYPE_CONFIG[selectedEvent.type] : null;
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
@@ -340,7 +344,9 @@ export function EventsView() {
             >
               <option value="all">Todos los barrios</option>
               {BARRIOS.map((b) => (
-                <option key={b} value={b}>{b}</option>
+                <option key={b} value={b}>
+                  {b}
+                </option>
               ))}
             </select>
             <select
@@ -350,7 +356,9 @@ export function EventsView() {
             >
               <option value="all">Todos los responsables</option>
               {RESPONSABLES.map((r) => (
-                <option key={r} value={r}>{r}</option>
+                <option key={r} value={r}>
+                  {r}
+                </option>
               ))}
             </select>
           </div>
@@ -365,7 +373,7 @@ export function EventsView() {
                 'flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all',
                 viewMode === 'calendar'
                   ? 'bg-card text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
+                  : 'text-muted-foreground hover:text-foreground',
               )}
             >
               <CalendarDays className="w-3.5 h-3.5" />
@@ -377,7 +385,7 @@ export function EventsView() {
                 'flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all',
                 viewMode === 'agenda'
                   ? 'bg-card text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
+                  : 'text-muted-foreground hover:text-foreground',
               )}
             >
               <LayoutList className="w-3.5 h-3.5" />
@@ -387,7 +395,12 @@ export function EventsView() {
 
           {/* Legend */}
           <div className="hidden lg:flex items-center gap-3 ml-1">
-            {(Object.entries(EVENT_TYPE_CONFIG) as [EventType, typeof EVENT_TYPE_CONFIG[EventType]][]).map(([key, val]) => (
+            {(
+              Object.entries(EVENT_TYPE_CONFIG) as [
+                EventType,
+                (typeof EVENT_TYPE_CONFIG)[EventType],
+              ][]
+            ).map(([key, val]) => (
               <div key={key} className="flex items-center gap-1.5">
                 <span className={cn('w-2.5 h-2.5 rounded-full flex-shrink-0', val.dot)} />
                 <span className="text-[11px] text-muted-foreground">{val.label}</span>
@@ -415,7 +428,10 @@ export function EventsView() {
               {/* Day headers */}
               <div className="grid grid-cols-7 mb-2">
                 {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map((d) => (
-                  <div key={d} className="text-center text-[11px] font-semibold text-muted-foreground uppercase py-2">
+                  <div
+                    key={d}
+                    className="text-center text-[11px] font-semibold text-muted-foreground uppercase py-2"
+                  >
                     {d}
                   </div>
                 ))}
@@ -429,9 +445,9 @@ export function EventsView() {
                 ))}
 
                 {daysInMonth.map((day) => {
-                  const dayEvents = eventsForDay(day)
-                  const today = isToday(day)
-                  const hasSelected = selectedEvent && isSameDay(day, selectedEvent.date)
+                  const dayEvents = eventsForDay(day);
+                  const today = isToday(day);
+                  const hasSelected = selectedEvent && isSameDay(day, selectedEvent.date);
 
                   return (
                     <div
@@ -439,32 +455,37 @@ export function EventsView() {
                       className={cn(
                         'min-h-[100px] rounded-xl border p-2 transition-colors',
                         today ? 'border-primary/40 bg-primary/5' : 'border-border bg-card',
-                        hasSelected && 'ring-2 ring-primary ring-offset-1'
+                        hasSelected && 'ring-2 ring-primary ring-offset-1',
                       )}
                     >
-                      <div className={cn(
-                        'text-xs font-black mb-1.5 w-6 h-6 rounded-full flex items-center justify-center',
-                        today ? 'bg-primary text-primary-foreground' : 'text-foreground'
-                      )}>
+                      <div
+                        className={cn(
+                          'text-xs font-black mb-1.5 w-6 h-6 rounded-full flex items-center justify-center',
+                          today ? 'bg-primary text-primary-foreground' : 'text-foreground',
+                        )}
+                      >
                         {format(day, 'd')}
                       </div>
 
                       <div className="space-y-1">
                         {dayEvents.slice(0, 3).map((ev) => {
-                          const c = EVENT_TYPE_CONFIG[ev.type]
+                          const c = EVENT_TYPE_CONFIG[ev.type];
                           return (
                             <button
                               key={ev.id}
-                              onClick={() => setSelectedEvent(selectedEvent?.id === ev.id ? null : ev)}
+                              onClick={() =>
+                                setSelectedEvent(selectedEvent?.id === ev.id ? null : ev)
+                              }
                               className={cn(
                                 'w-full text-left text-[10px] font-semibold px-1.5 py-0.5 rounded-md truncate flex items-center gap-1 transition-opacity hover:opacity-80',
-                                c.bg, c.color
+                                c.bg,
+                                c.color,
                               )}
                             >
                               {c.icon}
                               <span className="truncate">{ev.title}</span>
                             </button>
-                          )
+                          );
                         })}
                         {dayEvents.length > 3 && (
                           <div className="text-[10px] text-muted-foreground font-semibold pl-1">
@@ -473,7 +494,7 @@ export function EventsView() {
                         )}
                       </div>
                     </div>
-                  )
+                  );
                 })}
               </div>
             </div>
@@ -487,8 +508,8 @@ export function EventsView() {
                 </div>
               )}
               {agendaEvents.map((evento, i) => {
-                const c = EVENT_TYPE_CONFIG[evento.type]
-                const isSelected = selectedEvent?.id === evento.id
+                const c = EVENT_TYPE_CONFIG[evento.type];
+                const isSelected = selectedEvent?.id === evento.id;
                 return (
                   <motion.button
                     key={evento.id}
@@ -498,13 +519,19 @@ export function EventsView() {
                     onClick={() => setSelectedEvent(isSelected ? null : evento)}
                     className={cn(
                       'w-full text-left bg-card border rounded-2xl p-4 flex gap-4 transition-all hover:border-primary/30',
-                      isSelected ? 'border-primary ring-1 ring-primary/20' : 'border-border'
+                      isSelected ? 'border-primary ring-1 ring-primary/20' : 'border-border',
                     )}
                   >
                     {/* Date badge */}
                     <div className="flex-shrink-0 w-12 text-center">
                       <div className={cn('rounded-xl py-2 px-1', c.bg)}>
-                        <div className={cn('text-[10px] font-bold uppercase leading-none', c.color, 'opacity-80')}>
+                        <div
+                          className={cn(
+                            'text-[10px] font-bold uppercase leading-none',
+                            c.color,
+                            'opacity-80',
+                          )}
+                        >
                           {format(evento.date, 'MMM', { locale: es })}
                         </div>
                         <div className={cn('text-xl font-black leading-none mt-0.5', c.color)}>
@@ -514,7 +541,13 @@ export function EventsView() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <span className={cn('text-[10px] font-bold uppercase px-2 py-0.5 rounded-full', c.bg, c.color)}>
+                        <span
+                          className={cn(
+                            'text-[10px] font-bold uppercase px-2 py-0.5 rounded-full',
+                            c.bg,
+                            c.color,
+                          )}
+                        >
                           {c.label}
                         </span>
                         <span className="text-xs text-muted-foreground">{evento.responsible}</span>
@@ -523,7 +556,14 @@ export function EventsView() {
                       <div className="flex flex-wrap gap-x-3 gap-y-0.5">
                         <div className="flex items-center gap-1 text-muted-foreground text-xs">
                           <Clock className="w-3 h-3" />
-                          {evento.time.replace(':', ':').padStart(5, '0').replace(/(\d{2}):(\d{2})/, (_, h, m) => `${parseInt(h) < 12 ? h : parseInt(h) - 12 || 12}:${m} ${parseInt(h) < 12 ? 'a.m.' : 'p.m.'}`)}
+                          {evento.time
+                            .replace(':', ':')
+                            .padStart(5, '0')
+                            .replace(
+                              /(\d{2}):(\d{2})/,
+                              (_, h, m) =>
+                                `${parseInt(h) < 12 ? h : parseInt(h) - 12 || 12}:${m} ${parseInt(h) < 12 ? 'a.m.' : 'p.m.'}`,
+                            )}
                         </div>
                         <div className="flex items-center gap-1 text-muted-foreground text-xs">
                           <MapPin className="w-3 h-3" />
@@ -536,7 +576,7 @@ export function EventsView() {
                       </div>
                     </div>
                   </motion.button>
-                )
+                );
               })}
             </div>
           )}
@@ -556,7 +596,13 @@ export function EventsView() {
               {/* Panel header */}
               <div className={cn('px-5 py-4 flex items-start justify-between gap-3', cfg.bg)}>
                 <div className="min-w-0">
-                  <div className={cn('text-[10px] font-bold uppercase mb-1 flex items-center gap-1.5', cfg.color, 'opacity-80')}>
+                  <div
+                    className={cn(
+                      'text-[10px] font-bold uppercase mb-1 flex items-center gap-1.5',
+                      cfg.color,
+                      'opacity-80',
+                    )}
+                  >
                     {cfg.icon}
                     {cfg.label}
                   </div>
@@ -564,12 +610,20 @@ export function EventsView() {
                     {selectedEvent.title}
                   </h2>
                   <p className={cn('text-[11px] mt-0.5', cfg.color, 'opacity-70')}>
-                    {format(selectedEvent.date, "EEEE d 'de' MMMM", { locale: es })} · {selectedEvent.time.replace(/(\d{1,2}):(\d{2})/, (_, h, m) => `${parseInt(h) > 12 ? parseInt(h) - 12 : h}:${m} ${parseInt(h) < 12 ? 'a.m.' : 'p.m.'}`)}
+                    {format(selectedEvent.date, "EEEE d 'de' MMMM", { locale: es })} ·{' '}
+                    {selectedEvent.time.replace(
+                      /(\d{1,2}):(\d{2})/,
+                      (_, h, m) =>
+                        `${parseInt(h) > 12 ? parseInt(h) - 12 : h}:${m} ${parseInt(h) < 12 ? 'a.m.' : 'p.m.'}`,
+                    )}
                   </p>
                 </div>
                 <button
                   onClick={() => setSelectedEvent(null)}
-                  className={cn('p-1 rounded-lg hover:bg-black/10 transition-colors flex-shrink-0 mt-0.5', cfg.color)}
+                  className={cn(
+                    'p-1 rounded-lg hover:bg-black/10 transition-colors flex-shrink-0 mt-0.5',
+                    cfg.color,
+                  )}
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -580,8 +634,12 @@ export function EventsView() {
                 <div className="flex items-start gap-2.5">
                   <MapPin className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
                   <div>
-                    <div className="text-xs font-semibold text-foreground">{selectedEvent.location}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">Cintalapa de Figueroa, Chiapas</div>
+                    <div className="text-xs font-semibold text-foreground">
+                      {selectedEvent.location}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      Cintalapa de Figueroa, Chiapas
+                    </div>
                   </div>
                 </div>
 
@@ -590,7 +648,9 @@ export function EventsView() {
                   <Users className="w-4 h-4 text-muted-foreground" />
                   <div className="text-xs">
                     <span className="text-muted-foreground">Responsable: </span>
-                    <span className="font-semibold text-foreground">{selectedEvent.responsible}</span>
+                    <span className="font-semibold text-foreground">
+                      {selectedEvent.responsible}
+                    </span>
                   </div>
                 </div>
 
@@ -600,14 +660,20 @@ export function EventsView() {
                     <MessageSquare className="w-5 h-5 text-primary-foreground" />
                   </div>
                   <div>
-                    <div className="text-2xl font-black text-primary leading-none">{selectedEvent.confirmados}</div>
-                    <div className="text-xs text-muted-foreground font-medium mt-0.5">Confirmados vía WhatsApp</div>
+                    <div className="text-2xl font-black text-primary leading-none">
+                      {selectedEvent.confirmados}
+                    </div>
+                    <div className="text-xs text-muted-foreground font-medium mt-0.5">
+                      Confirmados vía WhatsApp
+                    </div>
                   </div>
                 </div>
 
                 {/* Description */}
                 {selectedEvent.description && (
-                  <p className="text-sm text-muted-foreground leading-relaxed">{selectedEvent.description}</p>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {selectedEvent.description}
+                  </p>
                 )}
 
                 {/* Needs reported */}
@@ -639,7 +705,7 @@ export function EventsView() {
                       'w-full gap-2 transition-all',
                       reminderSent
                         ? 'bg-[#166534] hover:bg-[#166534] text-white'
-                        : 'bg-[#25D366] hover:bg-[#20bc5a] text-white'
+                        : 'bg-[#25D366] hover:bg-[#20bc5a] text-white',
                     )}
                   >
                     {reminderSent ? (
@@ -706,12 +772,16 @@ export function EventsView() {
                   >
                     <CheckCircle2 className="w-12 h-12 text-primary mb-3" />
                     <p className="font-black text-foreground text-lg">Evento programado</p>
-                    <p className="text-sm text-muted-foreground mt-1">Ya aparece en el calendario territorial</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Ya aparece en el calendario territorial
+                    </p>
                   </motion.div>
                 ) : (
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-1.5">
-                      <Label htmlFor="ev-title" className="text-sm">Nombre del encuentro *</Label>
+                      <Label htmlFor="ev-title" className="text-sm">
+                        Nombre del encuentro *
+                      </Label>
                       <Input
                         id="ev-title"
                         placeholder="Ej: Asamblea Barrio La Candelaria"
@@ -723,7 +793,9 @@ export function EventsView() {
 
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1.5">
-                        <Label htmlFor="ev-barrio" className="text-sm">Barrio / Ejido *</Label>
+                        <Label htmlFor="ev-barrio" className="text-sm">
+                          Barrio / Ejido *
+                        </Label>
                         <select
                           id="ev-barrio"
                           value={form.barrio}
@@ -733,27 +805,40 @@ export function EventsView() {
                         >
                           <option value="">Seleccionar...</option>
                           {BARRIOS.map((b) => (
-                            <option key={b} value={b}>{b}</option>
+                            <option key={b} value={b}>
+                              {b}
+                            </option>
                           ))}
                         </select>
                       </div>
                       <div className="space-y-1.5">
-                        <Label htmlFor="ev-type" className="text-sm">Tipo de evento *</Label>
+                        <Label htmlFor="ev-type" className="text-sm">
+                          Tipo de evento *
+                        </Label>
                         <select
                           id="ev-type"
                           value={form.type}
                           onChange={(e) => setField('type', e.target.value as EventType)}
                           className="w-full text-sm border border-border rounded-lg px-3 py-2 bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                         >
-                          {(Object.entries(EVENT_TYPE_CONFIG) as [EventType, typeof EVENT_TYPE_CONFIG[EventType]][]).map(([k, v]) => (
-                            <option key={k} value={k}>{v.label}</option>
+                          {(
+                            Object.entries(EVENT_TYPE_CONFIG) as [
+                              EventType,
+                              (typeof EVENT_TYPE_CONFIG)[EventType],
+                            ][]
+                          ).map(([k, v]) => (
+                            <option key={k} value={k}>
+                              {v.label}
+                            </option>
                           ))}
                         </select>
                       </div>
                     </div>
 
                     <div className="space-y-1.5">
-                      <Label htmlFor="ev-loc" className="text-sm">Ubicación exacta</Label>
+                      <Label htmlFor="ev-loc" className="text-sm">
+                        Ubicación exacta
+                      </Label>
                       <Input
                         id="ev-loc"
                         placeholder="Ej: Parque Central, calle Hidalgo #12"
@@ -764,7 +849,9 @@ export function EventsView() {
 
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1.5">
-                        <Label htmlFor="ev-date" className="text-sm">Fecha *</Label>
+                        <Label htmlFor="ev-date" className="text-sm">
+                          Fecha *
+                        </Label>
                         <Input
                           id="ev-date"
                           type="date"
@@ -774,7 +861,9 @@ export function EventsView() {
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <Label htmlFor="ev-time" className="text-sm">Hora *</Label>
+                        <Label htmlFor="ev-time" className="text-sm">
+                          Hora *
+                        </Label>
                         <Input
                           id="ev-time"
                           type="time"
@@ -786,7 +875,9 @@ export function EventsView() {
                     </div>
 
                     <div className="space-y-1.5">
-                      <Label htmlFor="ev-resp" className="text-sm">Responsable de brigada *</Label>
+                      <Label htmlFor="ev-resp" className="text-sm">
+                        Responsable de brigada *
+                      </Label>
                       <select
                         id="ev-resp"
                         value={form.responsible}
@@ -796,7 +887,9 @@ export function EventsView() {
                       >
                         <option value="">Seleccionar responsable...</option>
                         {RESPONSABLES.map((r) => (
-                          <option key={r} value={r}>{r}</option>
+                          <option key={r} value={r}>
+                            {r}
+                          </option>
                         ))}
                       </select>
                     </div>
@@ -818,7 +911,14 @@ export function EventsView() {
 
                     <Button
                       type="submit"
-                      disabled={loading || !form.title || !form.barrio || !form.date || !form.time || !form.responsible}
+                      disabled={
+                        loading ||
+                        !form.title ||
+                        !form.barrio ||
+                        !form.date ||
+                        !form.time ||
+                        !form.responsible
+                      }
                       className="w-full bg-primary hover:bg-primary-hover text-primary-foreground"
                     >
                       {loading ? (
@@ -838,5 +938,5 @@ export function EventsView() {
         )}
       </AnimatePresence>
     </div>
-  )
+  );
 }

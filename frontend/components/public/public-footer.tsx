@@ -1,16 +1,16 @@
-'use client'
+'use client';
 
-import { Check, Facebook, Mail } from 'lucide-react'
-import { useState } from 'react'
+import { Check, Facebook, Mail } from 'lucide-react';
+import { useState } from 'react';
 
 export function PublicFooter() {
-  const [email, setEmail] = useState('')
-  const [subscribed, setSubscribed] = useState(false)
+  const [email, setEmail] = useState('');
+  const [subscribed, setSubscribed] = useState(false);
 
   function handleNewsletter(e: React.FormEvent) {
-    e.preventDefault()
-    if (!email) return
-    setSubscribed(true)
+    e.preventDefault();
+    if (!email) return;
+    setSubscribed(true);
   }
 
   return (
@@ -20,9 +20,7 @@ export function PublicFooter() {
         <div className="max-w-7xl mx-auto px-6 py-12">
           <div className="flex flex-col md:flex-row items-center justify-between gap-8">
             <div>
-              <h3 className="text-xl font-black text-white mb-1">
-                Mantente informada/o
-              </h3>
+              <h3 className="text-xl font-black text-white mb-1">Mantente informada/o</h3>
               <p className="text-sidebar-foreground/50 text-sm">
                 Recibe noticias, eventos en tu barrio y propuestas directo en tu correo.
               </p>
@@ -82,7 +80,7 @@ export function PublicFooter() {
               {[Facebook].map((Icon, i) => (
                 <a
                   key={i}
-                  target='__blank'
+                  target="__blank"
                   href="https://www.facebook.com/karina.alvarado.735"
                   className="w-8 h-8 rounded-lg bg-sidebar-accent hover:bg-primary/30 flex items-center justify-center text-sidebar-foreground/50 hover:text-white transition-colors"
                   aria-label="Redes sociales"
@@ -99,7 +97,10 @@ export function PublicFooter() {
             <ul className="space-y-2">
               {['Propuestas', 'Próximos eventos', 'Galería', 'Equipo'].map((item) => (
                 <li key={item}>
-                  <a href="#" className="text-sidebar-foreground/50 hover:text-white text-sm transition-colors">
+                  <a
+                    href="#"
+                    className="text-sidebar-foreground/50 hover:text-white text-sm transition-colors"
+                  >
                     {item}
                   </a>
                 </li>
@@ -117,7 +118,10 @@ export function PublicFooter() {
                 'Aviso de privacidad',
               ].map((item) => (
                 <li key={item}>
-                  <a href="#" className="text-sidebar-foreground/50 hover:text-white text-sm transition-colors">
+                  <a
+                    href="#"
+                    className="text-sidebar-foreground/50 hover:text-white text-sm transition-colors"
+                  >
                     {item}
                   </a>
                 </li>
@@ -128,7 +132,8 @@ export function PublicFooter() {
 
         <div className="border-t border-sidebar-border pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-sidebar-foreground/30 text-xs">
-            © {new Date().getFullYear()} Voz Ciudadana · Cintalapa de Figueroa, Chiapas. Todos los derechos reservados.
+            © {new Date().getFullYear()} Voz Ciudadana · Cintalapa de Figueroa, Chiapas. Todos los
+            derechos reservados.
           </p>
           <p className="text-sidebar-foreground/20 text-xs">
             Financiamiento público de campaña conforme a normativa electoral vigente.
@@ -136,5 +141,5 @@ export function PublicFooter() {
         </div>
       </div>
     </footer>
-  )
+  );
 }

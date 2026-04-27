@@ -1,52 +1,43 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { motion } from 'framer-motion'
-import {
-  Phone,
-  MapPin,
-  Calendar,
-  Tag,
-  ChevronDown,
-  Clock,
-  Building2,
-  X,
-} from 'lucide-react'
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { Phone, MapPin, Calendar, Tag, ChevronDown, Clock, Building2, X } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
-import { DEPARTMENTS, STATUS_CONFIG, type Chat, type ChatStatus } from '@/lib/mock-data'
+} from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { DEPARTMENTS, STATUS_CONFIG, type Chat, type ChatStatus } from '@/lib/mock-data';
 
 interface CitizenProfileProps {
-  chat: Chat | null
-  onClose?: () => void
+  chat: Chat | null;
+  onClose?: () => void;
 }
 
 const STATUS_OPTIONS: { value: ChatStatus; label: string }[] = [
   { value: 'nuevo', label: 'Nuevo' },
   { value: 'en_proceso', label: 'En proceso' },
   { value: 'resuelto', label: 'Resuelto' },
-]
+];
 
 export function CitizenProfile({ chat, onClose }: CitizenProfileProps) {
-  const [department, setDepartment] = useState(chat?.citizen.department ?? '')
-  const [status, setStatus] = useState<ChatStatus>(chat?.status ?? 'nuevo')
+  const [department, setDepartment] = useState(chat?.citizen.department ?? '');
+  const [status, setStatus] = useState<ChatStatus>(chat?.status ?? 'nuevo');
 
   if (!chat) {
     return (
       <div className="w-72 flex-shrink-0 border-l border-border bg-card flex items-center justify-center text-muted-foreground text-sm p-6 text-center">
         Selecciona una conversación para ver el perfil ciudadano.
       </div>
-    )
+    );
   }
 
-  const { citizen } = chat
-  const cfg = STATUS_CONFIG[status]
+  const { citizen } = chat;
+  const cfg = STATUS_CONFIG[status];
 
   return (
     <motion.div
@@ -60,7 +51,10 @@ export function CitizenProfile({ chat, onClose }: CitizenProfileProps) {
       <div className="flex items-center justify-between px-5 py-4 border-b border-border">
         <span className="text-sm font-semibold text-foreground">Perfil Ciudadano</span>
         {onClose && (
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground transition-colors">
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground transition-colors"
+          >
             <X className="w-4 h-4" />
           </button>
         )}
@@ -75,7 +69,9 @@ export function CitizenProfile({ chat, onClose }: CitizenProfileProps) {
         <span className="text-xs text-muted-foreground font-medium mt-1">
           Voz Registrada de {citizen.colonia}
         </span>
-        <span className={cn('text-xs font-medium px-2.5 py-1 rounded-full mt-1.5', cfg.bg, cfg.color)}>
+        <span
+          className={cn('text-xs font-medium px-2.5 py-1 rounded-full mt-1.5', cfg.bg, cfg.color)}
+        >
           {cfg.label}
         </span>
       </div>
@@ -132,11 +128,7 @@ export function CitizenProfile({ chat, onClose }: CitizenProfileProps) {
         </h4>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full justify-between text-sm"
-            >
+            <Button variant="outline" size="sm" className="w-full justify-between text-sm">
               <span className={cn(!department && 'text-muted-foreground')}>
                 {department || 'Sin asignar'}
               </span>
@@ -165,7 +157,7 @@ export function CitizenProfile({ chat, onClose }: CitizenProfileProps) {
         </h4>
         <div className="flex flex-col gap-2">
           {STATUS_OPTIONS.map(({ value, label }) => {
-            const optCfg = STATUS_CONFIG[value]
+            const optCfg = STATUS_CONFIG[value];
             return (
               <button
                 key={value}
@@ -174,13 +166,13 @@ export function CitizenProfile({ chat, onClose }: CitizenProfileProps) {
                   'flex items-center gap-2 px-3 py-2 rounded-lg text-sm border transition-colors',
                   status === value
                     ? `${optCfg.bg} ${optCfg.color} border-transparent`
-                    : 'border-border text-muted-foreground hover:bg-muted'
+                    : 'border-border text-muted-foreground hover:bg-muted',
                 )}
               >
                 <span className={cn('w-2 h-2 rounded-full', optCfg.dot)} />
                 {label}
               </button>
-            )
+            );
           })}
         </div>
       </div>
@@ -200,5 +192,5 @@ export function CitizenProfile({ chat, onClose }: CitizenProfileProps) {
         </div>
       </div>
     </motion.div>
-  )
+  );
 }

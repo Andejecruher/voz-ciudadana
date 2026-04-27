@@ -1,15 +1,15 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { motion } from 'framer-motion'
-import { Search, Filter } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { Input } from '@/components/ui/input'
-import { MOCK_CHATS, STATUS_CONFIG, type Chat, type ChatStatus } from '@/lib/mock-data'
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { Search, Filter } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Input } from '@/components/ui/input';
+import { MOCK_CHATS, STATUS_CONFIG, type Chat, type ChatStatus } from '@/lib/mock-data';
 
 interface ChatListProps {
-  selectedId: string | null
-  onSelect: (chat: Chat) => void
+  selectedId: string | null;
+  onSelect: (chat: Chat) => void;
 }
 
 const STATUS_FILTERS: { value: ChatStatus | 'all'; label: string }[] = [
@@ -17,19 +17,19 @@ const STATUS_FILTERS: { value: ChatStatus | 'all'; label: string }[] = [
   { value: 'nuevo', label: 'Nuevos' },
   { value: 'en_proceso', label: 'En proceso' },
   { value: 'resuelto', label: 'Resueltos' },
-]
+];
 
 export function ChatList({ selectedId, onSelect }: ChatListProps) {
-  const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState<ChatStatus | 'all'>('all')
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState<ChatStatus | 'all'>('all');
 
   const filtered = MOCK_CHATS.filter((c) => {
     const matchSearch =
       c.citizen.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.citizen.colonia.toLowerCase().includes(search.toLowerCase())
-    const matchFilter = filter === 'all' || c.status === filter
-    return matchSearch && matchFilter
-  })
+      c.citizen.colonia.toLowerCase().includes(search.toLowerCase());
+    const matchFilter = filter === 'all' || c.status === filter;
+    return matchSearch && matchFilter;
+  });
 
   return (
     <div className="flex flex-col h-full border-r border-border bg-background">
@@ -62,7 +62,7 @@ export function ChatList({ selectedId, onSelect }: ChatListProps) {
               'px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors',
               filter === value
                 ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:bg-muted'
+                : 'text-muted-foreground hover:bg-muted',
             )}
           >
             {label}
@@ -78,8 +78,8 @@ export function ChatList({ selectedId, onSelect }: ChatListProps) {
           </div>
         )}
         {filtered.map((chat, i) => {
-          const cfg = STATUS_CONFIG[chat.status]
-          const isSelected = selectedId === chat.id
+          const cfg = STATUS_CONFIG[chat.status];
+          const isSelected = selectedId === chat.id;
           return (
             <motion.button
               key={chat.id}
@@ -89,7 +89,7 @@ export function ChatList({ selectedId, onSelect }: ChatListProps) {
               onClick={() => onSelect(chat)}
               className={cn(
                 'w-full text-left px-4 py-3.5 border-b border-border transition-colors hover:bg-muted/50',
-                isSelected && 'bg-primary/5 border-l-2 border-l-primary'
+                isSelected && 'bg-primary/5 border-l-2 border-l-primary',
               )}
             >
               <div className="flex items-start gap-3">
@@ -123,7 +123,7 @@ export function ChatList({ selectedId, onSelect }: ChatListProps) {
                       className={cn(
                         'text-[10px] font-medium px-2 py-0.5 rounded-full',
                         cfg.bg,
-                        cfg.color
+                        cfg.color,
                       )}
                     >
                       {cfg.label}
@@ -132,9 +132,9 @@ export function ChatList({ selectedId, onSelect }: ChatListProps) {
                 </div>
               </div>
             </motion.button>
-          )
+          );
         })}
       </div>
     </div>
-  )
+  );
 }

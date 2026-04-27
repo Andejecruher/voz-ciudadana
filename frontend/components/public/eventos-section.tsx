@@ -1,8 +1,8 @@
-'use client'
+'use client';
 
-import { AnimatePresence, motion } from 'framer-motion'
-import { CalendarDays, Check, Clock, MapPin, Phone, User, X } from 'lucide-react'
-import { useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion';
+import { CalendarDays, Check, Clock, MapPin, Phone, User, X } from 'lucide-react';
+import { useState } from 'react';
 
 const EVENTOS = [
   {
@@ -41,30 +41,30 @@ const EVENTOS = [
     desc: 'Consultas médicas gratuitas, vacunación y talleres de salud comunitaria para toda la familia de Cintalapa.',
     cupo: 'Aforo libre',
   },
-]
+];
 
 interface RegistroState {
-  name: string
-  phone: string
+  name: string;
+  phone: string;
 }
 
 export function EventosSection() {
-  const [selectedEvento, setSelectedEvento] = useState<string | null>(null)
-  const [registro, setRegistro] = useState<RegistroState>({ name: '', phone: '' })
-  const [registrados, setRegistrados] = useState<Set<string>>(new Set())
-  const [loading, setLoading] = useState(false)
+  const [selectedEvento, setSelectedEvento] = useState<string | null>(null);
+  const [registro, setRegistro] = useState<RegistroState>({ name: '', phone: '' });
+  const [registrados, setRegistrados] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(false);
 
-  const evento = EVENTOS.find((e) => e.id === selectedEvento)
+  const evento = EVENTOS.find((e) => e.id === selectedEvento);
 
   async function handleRegistro(e: React.FormEvent) {
-    e.preventDefault()
-    if (!registro.name || !registro.phone || !selectedEvento) return
-    setLoading(true)
-    await new Promise((r) => setTimeout(r, 1200))
-    setLoading(false)
-    setRegistrados((prev) => new Set([...prev, selectedEvento]))
-    setSelectedEvento(null)
-    setRegistro({ name: '', phone: '' })
+    e.preventDefault();
+    if (!registro.name || !registro.phone || !selectedEvento) return;
+    setLoading(true);
+    await new Promise((r) => setTimeout(r, 1200));
+    setLoading(false);
+    setRegistrados((prev) => new Set([...prev, selectedEvento]));
+    setSelectedEvento(null);
+    setRegistro({ name: '', phone: '' });
   }
 
   return (
@@ -86,13 +86,14 @@ export function EventosSection() {
             <span className="text-primary">Ven a conocernos.</span>
           </h2>
           <p className="text-muted-foreground mt-4 max-w-xl mx-auto leading-relaxed">
-            La candidata visita personalmente cada comunidad de Cintalapa. Regístrate y asiste al encuentro más cercano a ti.
+            La candidata visita personalmente cada comunidad de Cintalapa. Regístrate y asiste al
+            encuentro más cercano a ti.
           </p>
         </motion.div>
 
         <div className="grid md:grid-cols-2 gap-6">
           {EVENTOS.map(({ id, fecha, hora, titulo, lugar, desc, cupo }, i) => {
-            const yaRegistrado = registrados.has(id)
+            const yaRegistrado = registrados.has(id);
             return (
               <motion.div
                 key={id}
@@ -148,7 +149,7 @@ export function EventosSection() {
                   )}
                 </div>
               </motion.div>
-            )
+            );
           })}
         </div>
       </div>
@@ -178,7 +179,9 @@ export function EventosSection() {
                     </span>
                   </div>
                   <h3 className="font-black text-foreground text-lg">{evento.titulo}</h3>
-                  <p className="text-muted-foreground text-sm mt-1">{evento.fecha} · {evento.hora}</p>
+                  <p className="text-muted-foreground text-sm mt-1">
+                    {evento.fecha} · {evento.hora}
+                  </p>
                 </div>
                 <button
                   onClick={() => setSelectedEvento(null)}
@@ -232,5 +235,5 @@ export function EventosSection() {
         )}
       </AnimatePresence>
     </section>
-  )
+  );
 }

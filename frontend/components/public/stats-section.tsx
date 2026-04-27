@@ -1,8 +1,8 @@
-'use client'
+'use client';
 
-import { useEffect, useRef, useState } from 'react'
-import { motion, useInView } from 'framer-motion'
-import { Users, MessageSquare, CheckCircle, MapPin } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react';
+import { motion, useInView } from 'framer-motion';
+import { Users, MessageSquare, CheckCircle, MapPin } from 'lucide-react';
 
 const STATS = [
   {
@@ -29,34 +29,40 @@ const STATS = [
     label: 'Colonias activas',
     suffix: '',
   },
-]
+];
 
 function useCountUp(target: number, duration = 2000, active: boolean) {
-  const [count, setCount] = useState(0)
+  const [count, setCount] = useState(0);
 
   useEffect(() => {
-    if (!active) return
-    let start = 0
-    const step = target / (duration / 16)
+    if (!active) return;
+    let start = 0;
+    const step = target / (duration / 16);
     const timer = setInterval(() => {
-      start += step
+      start += step;
       if (start >= target) {
-        setCount(target)
-        clearInterval(timer)
+        setCount(target);
+        clearInterval(timer);
       } else {
-        setCount(Math.floor(start))
+        setCount(Math.floor(start));
       }
-    }, 16)
-    return () => clearInterval(timer)
-  }, [target, duration, active])
+    }, 16);
+    return () => clearInterval(timer);
+  }, [target, duration, active]);
 
-  return count
+  return count;
 }
 
-function StatCard({ icon: Icon, value, label, suffix, index }: (typeof STATS)[0] & { index: number }) {
-  const ref = useRef(null)
-  const inView = useInView(ref, { once: true, margin: '-60px' })
-  const count = useCountUp(value, 2000, inView)
+function StatCard({
+  icon: Icon,
+  value,
+  label,
+  suffix,
+  index,
+}: (typeof STATS)[0] & { index: number }) {
+  const ref = useRef(null);
+  const inView = useInView(ref, { once: true, margin: '-60px' });
+  const count = useCountUp(value, 2000, inView);
 
   return (
     <motion.div
@@ -76,7 +82,7 @@ function StatCard({ icon: Icon, value, label, suffix, index }: (typeof STATS)[0]
       </div>
       <div className="text-muted-foreground text-sm mt-2 leading-relaxed">{label}</div>
     </motion.div>
-  )
+  );
 }
 
 export function StatsSection() {
@@ -97,7 +103,8 @@ export function StatsSection() {
             Miles de voces, un solo proyecto
           </h2>
           <p className="text-sidebar-foreground/50 mt-3 max-w-lg mx-auto leading-relaxed">
-            Cada registro, cada reporte y cada solución forma parte de un registro histórico de participación ciudadana.
+            Cada registro, cada reporte y cada solución forma parte de un registro histórico de
+            participación ciudadana.
           </p>
         </motion.div>
 
@@ -108,5 +115,5 @@ export function StatsSection() {
         </div>
       </div>
     </section>
-  )
+  );
 }

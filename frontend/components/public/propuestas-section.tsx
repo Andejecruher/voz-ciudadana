@@ -1,7 +1,7 @@
-'use client'
+'use client';
 
-import { motion } from 'framer-motion'
-import { Briefcase, Droplets, GraduationCap, HeartPulse, Home, Shield, Wheat } from 'lucide-react'
+import { motion } from 'framer-motion';
+import { Briefcase, Droplets, GraduationCap, HeartPulse, Home, Shield, Wheat } from 'lucide-react';
 
 const PROPUESTAS = [
   {
@@ -42,7 +42,7 @@ const PROPUESTAS = [
     title: 'Vivienda Digna',
     desc: 'Regularización de predios, apoyos para mejora de vivienda y urbanización en colonias periféricas.',
   },
-]
+];
 
 export function PropuestasSection() {
   return (
@@ -64,8 +64,8 @@ export function PropuestasSection() {
             <span className="text-primary">hecho con Cintalapa.</span>
           </h2>
           <p className="text-muted-foreground mt-4 max-w-xl mx-auto leading-relaxed">
-            Cada propuesta nació de escuchar directamente a los barrios y comunidades de
-            Cintalapa de Figueroa. Son compromisos reales, no promesas de campaña.
+            Cada propuesta nació de escuchar directamente a los barrios y comunidades de Cintalapa
+            de Figueroa. Son compromisos reales, no promesas de campaña.
           </p>
         </motion.div>
 
@@ -110,5 +110,5 @@ export function PropuestasSection() {
         </div>
       </div>
     </section>
-  )
+  );
 }

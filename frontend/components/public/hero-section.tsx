@@ -1,7 +1,7 @@
-'use client'
+'use client';
 
-import { motion } from 'framer-motion'
-import { Check, ChevronDown, MessageCircle } from 'lucide-react'
+import { motion } from 'framer-motion';
+import { Check, ChevronDown, MessageCircle } from 'lucide-react';
 
 export function HeroSection() {
   return (
@@ -43,8 +43,7 @@ export function HeroSection() {
             transition={{ duration: 0.7, delay: 0.2 }}
             className="text-5xl md:text-7xl font-black text-white leading-[1.05] text-balance mb-6"
           >
-            Cintalapa tiene{' '}
-            <span className="text-primary-light">voz de mujer.</span>
+            Cintalapa tiene <span className="text-primary-light">voz de mujer.</span>
           </motion.h1>
 
           {/* Subtitle */}
@@ -54,8 +53,8 @@ export function HeroSection() {
             transition={{ duration: 0.6, delay: 0.4 }}
             className="text-lg text-white/70 leading-relaxed mb-10 max-w-lg text-pretty"
           >
-            Nací aquí, crecí aquí, y juntas haremos historia. Con Voz Ciudadana,
-            cada familia de Cintalapa tendrá agua, seguridad y un campo próspero.
+            Nací aquí, crecí aquí, y juntas haremos historia. Con Voz Ciudadana, cada familia de
+            Cintalapa tendrá agua, seguridad y un campo próspero.
           </motion.p>
 
           {/* CTAs */}
@@ -90,16 +89,14 @@ export function HeroSection() {
             transition={{ delay: 0.9 }}
             className="flex flex-wrap gap-x-8 gap-y-2 mt-12"
           >
-            {[
-              'Cintalapa de Figueroa',
-              'Barrios y colonias unidas',
-              'Escucha directa',
-            ].map((item) => (
-              <div key={item} className="flex items-center gap-2 text-white/50 text-sm">
-                <div className="w-1.5 h-1.5 rounded-full bg-primary-light" />
-                {item}
-              </div>
-            ))}
+            {['Cintalapa de Figueroa', 'Barrios y colonias unidas', 'Escucha directa'].map(
+              (item) => (
+                <div key={item} className="flex items-center gap-2 text-white/50 text-sm">
+                  <div className="w-1.5 h-1.5 rounded-full bg-primary-light" />
+                  {item}
+                </div>
+              ),
+            )}
           </motion.div>
         </div>
       </div>
@@ -132,5 +129,5 @@ export function HeroSection() {
         </motion.div>
       </motion.div>
     </section>
-  )
+  );
 }

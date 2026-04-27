@@ -1,20 +1,20 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { motion } from 'framer-motion'
-import { CheckCircle2, Phone, User, MapPin, Loader2 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { CheckCircle2, Phone, User, MapPin, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
-import { Checkbox } from '@/components/ui/checkbox'
-import { cn } from '@/lib/utils'
+} from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { cn } from '@/lib/utils';
 
 const BARRIOS_CINTALAPA = [
   'Centro',
@@ -29,7 +29,7 @@ const BARRIOS_CINTALAPA = [
   'La Esperanza',
   'Ejido Cintalapa',
   'Otro',
-]
+];
 
 const INTERESES = [
   { id: 'agua', label: 'Agua Potable' },
@@ -38,10 +38,10 @@ const INTERESES = [
   { id: 'salud', label: 'Salud' },
   { id: 'educacion', label: 'Educación' },
   { id: 'empleo', label: 'Empleo y Economía' },
-]
+];
 
 function validatePhone(phone: string) {
-  return /^[0-9]{10}$/.test(phone.replace(/\s/g, ''))
+  return /^[0-9]{10}$/.test(phone.replace(/\s/g, ''));
 }
 
 export function RegisterForm() {
@@ -50,13 +50,13 @@ export function RegisterForm() {
     phone: '',
     barrio: '',
     interests: [] as string[],
-  })
-  const [touched, setTouched] = useState({ phone: false })
-  const [submitted, setSubmitted] = useState(false)
-  const [loading, setLoading] = useState(false)
+  });
+  const [touched, setTouched] = useState({ phone: false });
+  const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const phoneValid = validatePhone(form.phone)
-  const phoneError = touched.phone && form.phone.length > 0 && !phoneValid
+  const phoneValid = validatePhone(form.phone);
+  const phoneError = touched.phone && form.phone.length > 0 && !phoneValid;
 
   function toggleInterest(id: string) {
     setForm((prev) => ({
@@ -64,16 +64,16 @@ export function RegisterForm() {
       interests: prev.interests.includes(id)
         ? prev.interests.filter((i) => i !== id)
         : [...prev.interests, id],
-    }))
+    }));
   }
 
   async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!form.name || !phoneValid || !form.barrio) return
-    setLoading(true)
-    await new Promise((r) => setTimeout(r, 1500))
-    setLoading(false)
-    setSubmitted(true)
+    e.preventDefault();
+    if (!form.name || !phoneValid || !form.barrio) return;
+    setLoading(true);
+    await new Promise((r) => setTimeout(r, 1500));
+    setLoading(false);
+    setSubmitted(true);
   }
 
   if (submitted) {
@@ -86,15 +86,13 @@ export function RegisterForm() {
         <div className="w-20 h-20 rounded-full bg-accent/10 flex items-center justify-center mb-6">
           <CheckCircle2 className="w-10 h-10 text-accent" />
         </div>
-        <h3 className="text-2xl font-bold text-foreground mb-2">
-          ¡Tu voz fue registrada!
-        </h3>
+        <h3 className="text-2xl font-bold text-foreground mb-2">¡Tu voz fue registrada!</h3>
         <p className="text-muted-foreground max-w-xs leading-relaxed">
-          Gracias, <strong>{form.name}</strong>. Tu voz de{' '}
-          <strong>{form.barrio}</strong> ya es parte de Voz Ciudadana. Te contactaremos pronto.
+          Gracias, <strong>{form.name}</strong>. Tu voz de <strong>{form.barrio}</strong> ya es
+          parte de Voz Ciudadana. Te contactaremos pronto.
         </p>
       </motion.div>
-    )
+    );
   }
 
   return (
@@ -158,7 +156,10 @@ export function RegisterForm() {
                 className={cn(
                   'pl-10 transition-colors',
                   phoneError && 'border-destructive focus-visible:ring-destructive/50',
-                  !phoneError && touched.phone && phoneValid && 'border-accent focus-visible:ring-accent/50'
+                  !phoneError &&
+                    touched.phone &&
+                    phoneValid &&
+                    'border-accent focus-visible:ring-accent/50',
                 )}
                 value={form.phone}
                 onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
@@ -201,7 +202,9 @@ export function RegisterForm() {
           <div className="space-y-3">
             <Label className="text-foreground font-medium">
               Temas que te importan{' '}
-              <span className="text-muted-foreground font-normal text-xs">(Selecciona todos los que apliquen)</span>
+              <span className="text-muted-foreground font-normal text-xs">
+                (Selecciona todos los que apliquen)
+              </span>
             </Label>
             <div className="grid grid-cols-2 gap-3">
               {INTERESES.map(({ id, label }) => (
@@ -211,7 +214,7 @@ export function RegisterForm() {
                     'flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all duration-150',
                     form.interests.includes(id)
                       ? 'border-primary bg-primary/5 text-foreground'
-                      : 'border-border hover:border-primary/50 text-muted-foreground'
+                      : 'border-border hover:border-primary/50 text-muted-foreground',
                   )}
                 >
                   <Checkbox
@@ -249,5 +252,5 @@ export function RegisterForm() {
         </motion.form>
       </div>
     </section>
-  )
+  );
 }

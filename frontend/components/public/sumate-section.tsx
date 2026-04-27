@@ -1,16 +1,25 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { motion } from 'framer-motion'
-import { Check, User, Phone, MapPin, Loader2, CheckCircle2 } from 'lucide-react'
-import { Checkbox } from '@/components/ui/checkbox'
-import { cn } from '@/lib/utils'
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { Check, User, Phone, MapPin, Loader2, CheckCircle2 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { cn } from '@/lib/utils';
 
 const BARRIOS_CINTALAPA = [
-  'Centro', 'La Candelaria', 'Santo Domingo', 'El Mirador',
-  'Los Ángeles', 'La Joya', 'San Sebastián', 'Barrio Nuevo',
-  'Colonia Morelos', 'La Esperanza', 'Ejido Cintalapa', 'Otro',
-]
+  'Centro',
+  'La Candelaria',
+  'Santo Domingo',
+  'El Mirador',
+  'Los Ángeles',
+  'La Joya',
+  'San Sebastián',
+  'Barrio Nuevo',
+  'Colonia Morelos',
+  'La Esperanza',
+  'Ejido Cintalapa',
+  'Otro',
+];
 
 const INTERESES = [
   { id: 'agua', label: 'Agua Potable' },
@@ -19,20 +28,20 @@ const INTERESES = [
   { id: 'salud', label: 'Salud' },
   { id: 'educacion', label: 'Educación' },
   { id: 'empleo', label: 'Empleo y Economía' },
-]
+];
 
 function validatePhone(phone: string) {
-  return /^[0-9]{10}$/.test(phone.replace(/\s/g, ''))
+  return /^[0-9]{10}$/.test(phone.replace(/\s/g, ''));
 }
 
 export function SumateSection() {
-  const [form, setForm] = useState({ name: '', phone: '', barrio: '', interests: [] as string[] })
-  const [touched, setTouched] = useState({ phone: false })
-  const [loading, setLoading] = useState(false)
-  const [done, setDone] = useState(false)
+  const [form, setForm] = useState({ name: '', phone: '', barrio: '', interests: [] as string[] });
+  const [touched, setTouched] = useState({ phone: false });
+  const [loading, setLoading] = useState(false);
+  const [done, setDone] = useState(false);
 
-  const phoneValid = validatePhone(form.phone)
-  const phoneError = touched.phone && form.phone.length > 0 && !phoneValid
+  const phoneValid = validatePhone(form.phone);
+  const phoneError = touched.phone && form.phone.length > 0 && !phoneValid;
 
   function toggleInterest(id: string) {
     setForm((prev) => ({
@@ -40,16 +49,16 @@ export function SumateSection() {
       interests: prev.interests.includes(id)
         ? prev.interests.filter((i) => i !== id)
         : [...prev.interests, id],
-    }))
+    }));
   }
 
   async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    if (!form.name || !phoneValid || !form.barrio) return
-    setLoading(true)
-    await new Promise((r) => setTimeout(r, 1400))
-    setLoading(false)
-    setDone(true)
+    e.preventDefault();
+    if (!form.name || !phoneValid || !form.barrio) return;
+    setLoading(true);
+    await new Promise((r) => setTimeout(r, 1400));
+    setLoading(false);
+    setDone(true);
   }
 
   return (
@@ -64,7 +73,6 @@ export function SumateSection() {
 
       <div className="relative z-10 max-w-5xl mx-auto">
         <div className="grid md:grid-cols-2 gap-16 items-start">
-
           {/* Left — copy */}
           <motion.div
             initial={{ opacity: 0, x: -30 }}
@@ -86,13 +94,12 @@ export function SumateSection() {
             </div>
 
             <h2 className="text-4xl md:text-5xl font-black text-white leading-tight text-balance mb-6">
-              Tu voz transforma{' '}
-              <span className="text-primary-light">Cintalapa.</span>
+              Tu voz transforma <span className="text-primary-light">Cintalapa.</span>
             </h2>
             <p className="text-white/60 leading-relaxed mb-8 text-pretty">
               Únete al movimiento ciudadano más importante de Cintalapa de Figueroa. Recibe
-              información directa sobre propuestas, eventos en tu barrio y la oportunidad de
-              ser parte activa del cambio que Chiapas necesita.
+              información directa sobre propuestas, eventos en tu barrio y la oportunidad de ser
+              parte activa del cambio que Chiapas necesita.
             </p>
 
             <div className="space-y-3">
@@ -127,10 +134,12 @@ export function SumateSection() {
                 <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-5">
                   <CheckCircle2 className="w-8 h-8 text-primary" />
                 </div>
-                <h3 className="text-2xl font-black text-foreground mb-2">¡Tu voz fue registrada!</h3>
+                <h3 className="text-2xl font-black text-foreground mb-2">
+                  ¡Tu voz fue registrada!
+                </h3>
                 <p className="text-muted-foreground leading-relaxed">
-                  Gracias, <strong>{form.name}</strong>. Tu voz de{' '}
-                  <strong>{form.barrio}</strong> ya es parte de Voz Ciudadana. Te contactaremos pronto.
+                  Gracias, <strong>{form.name}</strong>. Tu voz de <strong>{form.barrio}</strong> ya
+                  es parte de Voz Ciudadana. Te contactaremos pronto.
                 </p>
               </motion.div>
             ) : (
@@ -140,7 +149,9 @@ export function SumateSection() {
               >
                 <div className="text-center mb-1">
                   <h3 className="text-xl font-black text-foreground">Registra tu Voz</h3>
-                  <p className="text-muted-foreground text-sm mt-1">Gratuito · Seguro · 2 minutos</p>
+                  <p className="text-muted-foreground text-sm mt-1">
+                    Gratuito · Seguro · 2 minutos
+                  </p>
                 </div>
 
                 {/* Name */}
@@ -165,7 +176,9 @@ export function SumateSection() {
                     required
                     maxLength={10}
                     value={form.phone}
-                    onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value.replace(/\D/g, '') }))}
+                    onChange={(e) =>
+                      setForm((p) => ({ ...p, phone: e.target.value.replace(/\D/g, '') }))
+                    }
                     onBlur={() => setTouched((p) => ({ ...p, phone: true }))}
                     className={cn(
                       'w-full pl-10 pr-9 py-3.5 border rounded-xl text-sm focus:outline-none focus:ring-2 transition-colors',
@@ -173,14 +186,16 @@ export function SumateSection() {
                         ? 'border-destructive focus:ring-destructive/30 focus:border-destructive'
                         : touched.phone && phoneValid
                           ? 'border-accent focus:ring-accent/30 focus:border-accent'
-                          : 'border-border focus:ring-primary/30 focus:border-primary'
+                          : 'border-border focus:ring-primary/30 focus:border-primary',
                     )}
                   />
                   {touched.phone && phoneValid && (
                     <CheckCircle2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-accent" />
                   )}
                   {phoneError && (
-                    <p className="text-destructive text-xs mt-1 pl-1">Ingresa un número de 10 dígitos válido.</p>
+                    <p className="text-destructive text-xs mt-1 pl-1">
+                      Ingresa un número de 10 dígitos válido.
+                    </p>
                   )}
                 </div>
 
@@ -193,12 +208,16 @@ export function SumateSection() {
                     onChange={(e) => setForm((p) => ({ ...p, barrio: e.target.value }))}
                     className={cn(
                       'w-full pl-10 pr-4 py-3.5 border border-border rounded-xl text-sm appearance-none bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors',
-                      !form.barrio && 'text-muted-foreground'
+                      !form.barrio && 'text-muted-foreground',
                     )}
                   >
-                    <option value="" disabled>Barrio de Cintalapa</option>
+                    <option value="" disabled>
+                      Barrio de Cintalapa
+                    </option>
                     {BARRIOS_CINTALAPA.map((c) => (
-                      <option key={c} value={c}>{c}</option>
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -217,7 +236,7 @@ export function SumateSection() {
                           'flex items-center gap-2.5 p-2.5 rounded-xl border cursor-pointer transition-all duration-150 text-sm',
                           form.interests.includes(id)
                             ? 'border-primary bg-primary/5 text-foreground font-medium'
-                            : 'border-border hover:border-primary/40 text-muted-foreground'
+                            : 'border-border hover:border-primary/40 text-muted-foreground',
                         )}
                       >
                         <Checkbox
@@ -257,5 +276,5 @@ export function SumateSection() {
         </div>
       </div>
     </section>
-  )
+  );
 }

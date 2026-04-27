@@ -1,14 +1,7 @@
-'use client'
+'use client';
 
-import { motion } from 'framer-motion'
-import {
-  Users,
-  MessageCircle,
-  CalendarDays,
-  Target,
-  TrendingUp,
-  ArrowUpRight,
-} from 'lucide-react'
+import { motion } from 'framer-motion';
+import { Users, MessageCircle, CalendarDays, Target, TrendingUp, ArrowUpRight } from 'lucide-react';
 import {
   BarChart,
   Bar,
@@ -23,9 +16,9 @@ import {
   LineChart,
   Line,
   Legend,
-} from 'recharts'
-import { Progress } from '@/components/ui/progress'
-import { cn } from '@/lib/utils'
+} from 'recharts';
+import { Progress } from '@/components/ui/progress';
+import { cn } from '@/lib/utils';
 
 // --- Mock data ---
 
@@ -38,7 +31,7 @@ const BARRIO_DATA = [
   { barrio: 'La Joya', registros: 54 },
   { barrio: 'Col. Morelos', registros: 76 },
   { barrio: 'La Esperanza', registros: 48 },
-]
+];
 
 const CONCERN_DATA = [
   { name: 'Agua Potable', value: 38 },
@@ -46,9 +39,9 @@ const CONCERN_DATA = [
   { name: 'Empleo', value: 18 },
   { name: 'Campo', value: 12 },
   { name: 'Salud', value: 5 },
-]
+];
 
-const CONCERN_COLORS = ['#711B2C', '#9B3244', '#B8973A', '#374151', '#6B7280']
+const CONCERN_COLORS = ['#711B2C', '#9B3244', '#B8973A', '#374151', '#6B7280'];
 
 const GROWTH_DATA = [
   { semana: 'S1', registros: 48 },
@@ -63,7 +56,7 @@ const GROWTH_DATA = [
   { semana: 'S10', registros: 618 },
   { semana: 'S11', registros: 742 },
   { semana: 'S12', registros: 892 },
-]
+];
 
 const KPIS = [
   {
@@ -99,7 +92,7 @@ const KPIS = [
     positive: true,
     progress: 89,
   },
-]
+];
 
 function KpiCard({
   label,
@@ -140,7 +133,7 @@ function KpiCard({
         </div>
       )}
     </motion.div>
-  )
+  );
 }
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -154,10 +147,10 @@ const CustomTooltip = ({ active, payload, label }: any) => {
           </p>
         ))}
       </div>
-    )
+    );
   }
-  return null
-}
+  return null;
+};
 
 export function DashboardView() {
   return (
@@ -199,7 +192,11 @@ export function DashboardView() {
             </div>
             <ResponsiveContainer width="100%" height={220}>
               <BarChart data={BARRIO_DATA} barSize={24}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="var(--color-border)"
+                  vertical={false}
+                />
                 <XAxis
                   dataKey="barrio"
                   tick={{ fontSize: 11, fill: 'var(--color-muted-foreground)' }}
@@ -212,7 +209,12 @@ export function DashboardView() {
                   tickLine={false}
                 />
                 <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="registros" fill="var(--color-primary)" radius={[6, 6, 0, 0]} name="Registros" />
+                <Bar
+                  dataKey="registros"
+                  fill="var(--color-primary)"
+                  radius={[6, 6, 0, 0]}
+                  name="Registros"
+                />
               </BarChart>
             </ResponsiveContainer>
           </motion.div>
@@ -309,5 +311,5 @@ export function DashboardView() {
         </motion.div>
       </div>
     </div>
-  )
+  );
 }

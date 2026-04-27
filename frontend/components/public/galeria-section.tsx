@@ -1,14 +1,18 @@
-'use client'
+'use client';
 
-import { motion } from 'framer-motion'
+import { motion } from 'framer-motion';
 
 const GALLERY_ITEMS = [
   { src: '/images/galeria-1.jpg', alt: 'Modelando fuerza - Charla - Taller', span: 'col-span-2' },
   { src: '/images/galeria-2.jpg', alt: 'Entrega de canastas alimentarias a familias', span: '' },
   { src: '/images/galeria-3.jpg', alt: 'Entrega de despensa a escuelas', span: '' },
   { src: '/images/galeria-4.jpg', alt: 'Ayuda a personas con discapacidad', span: '' },
-  { src: '/images/galeria-5.jpg', alt: 'Banderazo de arranque de los programas alimentarios', span: '' },
-]
+  {
+    src: '/images/galeria-5.jpg',
+    alt: 'Banderazo de arranque de los programas alimentarios',
+    span: '',
+  },
+];
 
 export function GaleriaSection() {
   return (
@@ -25,11 +29,11 @@ export function GaleriaSection() {
             Galería
           </span>
           <h2 className="text-4xl md:text-5xl font-black text-foreground text-balance">
-            El trabajo{' '}
-            <span className="text-primary">en los barrios.</span>
+            El trabajo <span className="text-primary">en los barrios.</span>
           </h2>
           <p className="text-muted-foreground mt-4 max-w-lg mx-auto leading-relaxed">
-            Cada imagen es un testimonio de la presencia real y el compromiso con la gente de Cintalapa.
+            Cada imagen es un testimonio de la presencia real y el compromiso con la gente de
+            Cintalapa.
           </p>
         </motion.div>
 
@@ -58,5 +62,5 @@ export function GaleriaSection() {
         </div>
       </div>
     </section>
-  )
+  );
 }

@@ -1,50 +1,43 @@
-'use client'
+'use client';
 
-import { useEffect, useRef, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import {
-  Send,
-  Paperclip,
-  Smile,
-  Phone,
-  MoreVertical,
-  CheckCheck,
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
-import { STATUS_CONFIG, type Chat, type Message } from '@/lib/mock-data'
+import { useEffect, useRef, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Send, Paperclip, Smile, Phone, MoreVertical, CheckCheck } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { STATUS_CONFIG, type Chat, type Message } from '@/lib/mock-data';
 
 interface ChatWindowProps {
-  chat: Chat | null
+  chat: Chat | null;
 }
 
 export function ChatWindow({ chat }: ChatWindowProps) {
-  const [messages, setMessages] = useState<Message[]>([])
-  const [draft, setDraft] = useState('')
-  const bottomRef = useRef<HTMLDivElement>(null)
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [draft, setDraft] = useState('');
+  const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (chat) {
-      setMessages(chat.messages)
-      setDraft('')
+      setMessages(chat.messages);
+      setDraft('');
     }
-  }, [chat])
+  }, [chat]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   function send() {
-    if (!draft.trim()) return
+    if (!draft.trim()) return;
     const newMsg: Message = {
       id: `m${Date.now()}`,
       role: 'outbound',
       text: draft.trim(),
       time: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
-    }
-    setMessages((prev) => [...prev, newMsg])
-    setDraft('')
+    };
+    setMessages((prev) => [...prev, newMsg]);
+    setDraft('');
   }
 
   if (!chat) {
@@ -56,10 +49,10 @@ export function ChatWindow({ chat }: ChatWindowProps) {
         <p className="font-medium text-foreground/60">Selecciona una conversación</p>
         <p className="text-sm mt-1">Elige un chat de la lista para comenzar</p>
       </div>
-    )
+    );
   }
 
-  const cfg = STATUS_CONFIG[chat.status]
+  const cfg = STATUS_CONFIG[chat.status];
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-background">
@@ -72,11 +65,19 @@ export function ChatWindow({ chat }: ChatWindowProps) {
           <div>
             <div className="flex items-center gap-2">
               <span className="font-semibold text-foreground text-sm">{chat.citizen.name}</span>
-              <span className={cn('text-[10px] font-medium px-2 py-0.5 rounded-full', cfg.bg, cfg.color)}>
+              <span
+                className={cn(
+                  'text-[10px] font-medium px-2 py-0.5 rounded-full',
+                  cfg.bg,
+                  cfg.color,
+                )}
+              >
                 {cfg.label}
               </span>
             </div>
-            <p className="text-xs text-muted-foreground">{chat.citizen.colonia} · {chat.citizen.phone}</p>
+            <p className="text-xs text-muted-foreground">
+              {chat.citizen.colonia} · {chat.citizen.phone}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -105,17 +106,24 @@ export function ChatWindow({ chat }: ChatWindowProps) {
                   'max-w-[75%] rounded-2xl px-4 py-2.5 shadow-sm',
                   msg.role === 'outbound'
                     ? 'bg-primary text-primary-foreground rounded-br-sm'
-                    : 'bg-card border border-border text-foreground rounded-bl-sm'
+                    : 'bg-card border border-border text-foreground rounded-bl-sm',
                 )}
               >
                 <p className="text-sm leading-relaxed">{msg.text}</p>
                 <div
                   className={cn(
                     'flex items-center gap-1 mt-1',
-                    msg.role === 'outbound' ? 'justify-end' : 'justify-start'
+                    msg.role === 'outbound' ? 'justify-end' : 'justify-start',
                   )}
                 >
-                  <span className={cn('text-[10px]', msg.role === 'outbound' ? 'text-primary-foreground/50' : 'text-muted-foreground')}>
+                  <span
+                    className={cn(
+                      'text-[10px]',
+                      msg.role === 'outbound'
+                        ? 'text-primary-foreground/50'
+                        : 'text-muted-foreground',
+                    )}
+                  >
                     {msg.time}
                   </span>
                   {msg.role === 'outbound' && (
@@ -141,8 +149,8 @@ export function ChatWindow({ chat }: ChatWindowProps) {
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault()
-                  send()
+                  e.preventDefault();
+                  send();
                 }
               }}
             />
@@ -166,5 +174,5 @@ export function ChatWindow({ chat }: ChatWindowProps) {
         </div>
       </div>
     </div>
-  )
+  );
 }

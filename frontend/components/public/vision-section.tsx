@@ -1,7 +1,7 @@
-'use client'
+'use client';
 
-import { motion } from 'framer-motion'
-import { Quote } from 'lucide-react'
+import { motion } from 'framer-motion';
+import { Quote } from 'lucide-react';
 
 export function VisionSection() {
   return (
@@ -50,16 +50,15 @@ export function VisionSection() {
               Nuestra visión para Cintalapa
             </span>
             <h2 className="text-4xl md:text-5xl font-black text-foreground leading-tight text-balance mb-8">
-              Un compromiso{' '}
-              <span className="text-primary">desde la raíz.</span>
+              Un compromiso <span className="text-primary">desde la raíz.</span>
             </h2>
 
             {/* Quote block */}
             <div className="relative bg-muted rounded-2xl p-8 mb-8">
               <Quote className="absolute top-4 left-4 w-8 h-8 text-primary/20" />
               <blockquote className="text-xl font-semibold text-foreground leading-relaxed italic pl-4">
-                &ldquo;Soy una cintalapaneca de raíz. Mi compromiso con Voz Ciudadana
-                es escucharte para transformar.&rdquo;
+                &ldquo;Soy una cintalapaneca de raíz. Mi compromiso con Voz Ciudadana es escucharte
+                para transformar.&rdquo;
               </blockquote>
               <div className="mt-4 pl-4 flex items-center gap-3">
                 <div className="w-8 h-0.5 bg-primary" />
@@ -70,10 +69,10 @@ export function VisionSection() {
             </div>
 
             <p className="text-muted-foreground leading-relaxed mb-6">
-              Nacida y criada en Cintalapa de Figueroa, con una trayectoria forjada entre
-              la gente y para la gente. Voz Ciudadana no son promesas vacías — es un
-              compromiso en acción, construido escuchando directamente a cada barrio,
-              a cada familia de nuestra tierra chiapaneca.
+              Nacida y criada en Cintalapa de Figueroa, con una trayectoria forjada entre la gente y
+              para la gente. Voz Ciudadana no son promesas vacías — es un compromiso en acción,
+              construido escuchando directamente a cada barrio, a cada familia de nuestra tierra
+              chiapaneca.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4">
@@ -82,7 +81,10 @@ export function VisionSection() {
                 { num: '100+', label: 'Asambleas populares' },
                 { num: '5K+', label: 'Voces escuchadas' },
               ].map(({ num, label }) => (
-                <div key={label} className="flex-1 text-center py-4 border border-border rounded-xl">
+                <div
+                  key={label}
+                  className="flex-1 text-center py-4 border border-border rounded-xl"
+                >
                   <div className="text-2xl font-black text-primary">{num}</div>
                   <div className="text-xs text-muted-foreground font-medium mt-1">{label}</div>
                 </div>
@@ -92,5 +94,5 @@ export function VisionSection() {
         </div>
       </div>
     </section>
-  )
+  );
 }

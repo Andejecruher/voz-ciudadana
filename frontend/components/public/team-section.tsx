@@ -1,6 +1,6 @@
-'use client'
+'use client';
 
-import { motion } from 'framer-motion'
+import { motion } from 'framer-motion';
 
 const TEAM = [
   {
@@ -29,7 +29,7 @@ const TEAM = [
     role: 'Vinculación Ciudadana',
     img: '/images/team-4.jpg',
   },
-]
+];
 
 export function TeamSection() {
   return (
@@ -46,11 +46,11 @@ export function TeamSection() {
             Nuestro Equipo
           </span>
           <h2 className="text-4xl md:text-5xl font-black text-foreground text-balance">
-            Mujeres de Cintalapa{' '}
-            <span className="text-primary">liderando el cambio.</span>
+            Mujeres de Cintalapa <span className="text-primary">liderando el cambio.</span>
           </h2>
           <p className="text-muted-foreground mt-4 max-w-lg mx-auto leading-relaxed">
-            Un equipo construido sobre convicción, preparación y amor profundo por Cintalapa de Figueroa.
+            Un equipo construido sobre convicción, preparación y amor profundo por Cintalapa de
+            Figueroa.
           </p>
         </motion.div>
 
@@ -110,5 +110,5 @@ export function TeamSection() {
         </div>
       </div>
     </section>
-  )
+  );
 }
