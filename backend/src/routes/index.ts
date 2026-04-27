@@ -10,6 +10,7 @@ import { WebhookController } from '../controllers/webhook.controller';
 import { AuditService } from '../services/audit.service';
 import { AuthService } from '../services/auth.service';
 import { BotService } from '../services/bot.service';
+import { CitizensService } from '../services/citizens.service';
 import { DepartmentsService } from '../services/departments.service';
 import { InboxProcessorService } from '../services/events/inbox-processor.service';
 import { OutboxProcessorService } from '../services/events/outbox-processor.service';
@@ -25,6 +26,7 @@ import { UserService } from '../services/user.service';
 import { WebhookParserService } from '../services/whatsapp/webhook-parser.service';
 import { WhatsAppProvider } from '../services/whatsapp/whatsapp.provider';
 import { createAuthRouter } from './auth.routes';
+import { createCitizensRouter } from './citizens.routes';
 import { createDepartmentsRouter } from './departments.routes';
 import { createHandoverRouter } from './handover.routes';
 import { createMessagesRouter } from './messages.routes';
@@ -50,6 +52,7 @@ export function registerRoutes(app: Express, deps: RouteDependencies): void {
   const userService = new UserService(deps.prisma);
   const neighborhoodsService = new NeighborhoodsService(deps.prisma);
   const tagsService = new TagsService(deps.prisma);
+  const citizensService = new CitizensService(deps.prisma);
   const departmentsService = new DepartmentsService(deps.prisma);
 
   // ── Messaging Core ─────────────────────────────────────────────────────────
@@ -87,6 +90,7 @@ export function registerRoutes(app: Express, deps: RouteDependencies): void {
   apiRouter.use('/admin', createUsersRouter(userService, auditService));
   apiRouter.use('/admin', createNeighborhoodsRouter(neighborhoodsService, auditService));
   apiRouter.use('/admin', createTagsRouter(tagsService, auditService));
+  apiRouter.use('/citizens', createCitizensRouter(citizensService, auditService));
   apiRouter.use('/admin', createDepartmentsRouter(departmentsService, auditService));
   apiRouter.use('/messages', createMessagesRouter(messagesController));
   apiRouter.use('/handover', createHandoverRouter(handoverController));
