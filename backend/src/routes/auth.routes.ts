@@ -5,10 +5,13 @@
 import { Router } from 'express';
 import { AuthController } from '../controllers/auth.controller';
 import { authMiddleware } from '../middlewares/auth.middleware';
-import { createLoginRateLimitMiddleware, createRefreshRateLimitMiddleware } from '../middlewares/rate-limit.middleware';
-import { checkRole } from '../middlewares/role.middleware';
-import type { AuthService } from '../services/auth.service';
+import {
+  createLoginRateLimitMiddleware,
+  createRefreshRateLimitMiddleware,
+} from '../middlewares/rate-limit.middleware';
+import { requireRole } from '../middlewares/rbac';
 import type { AuditService } from '../services/audit.service';
+import type { AuthService } from '../services/auth.service';
 import type { LockoutService } from '../services/lockout.service';
 
 export function createAuthRouter(
@@ -48,7 +51,7 @@ export function createAuthRouter(
    * POST /auth/register — solo SUPERADMIN
    * Alternativa a /admin/users para registrar admins desde la pantalla de auth.
    */
-  router.post('/register', authMiddleware, checkRole(['SUPERADMIN']), ctrl.register);
+  router.post('/register', authMiddleware, requireRole(['SUPERADMIN']), ctrl.register);
 
   /* eslint-enable @typescript-eslint/no-misused-promises */
 

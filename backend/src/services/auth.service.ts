@@ -96,16 +96,18 @@ export class AuthService {
    *                 Para multi-sesión real el cliente DEBE enviar x-device-id o deviceId.
    */
   async login(email: string, password: string, deviceId: string): Promise<LoginResult> {
+    const normalizedEmail = email.toLowerCase().trim();
+
     // Lockout check (antes de consultar DB — evita timing attacks de enumeración)
-    await this.lockout.checkLockout(email);
+    await this.lockout.checkLockout(normalizedEmail);
 
     const user = await this.prisma.user.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
       include: { userRoles: { include: { role: true } } },
     });
 
     if (!user) {
-      await this.lockout.recordFailure(email);
+      await this.lockout.recordFailure(normalizedEmail);
       throw AppError.unauthorized('Credenciales inválidas');
     }
 
@@ -116,12 +118,12 @@ export class AuthService {
 
     const passwordValid = await comparePassword(password, user.hashedPassword);
     if (!passwordValid) {
-      await this.lockout.recordFailure(email);
+      await this.lockout.recordFailure(normalizedEmail);
       throw AppError.unauthorized('Credenciales inválidas');
     }
 
     // Login exitoso — limpiar contadores
-    await this.lockout.clearFailures(email);
+    await this.lockout.clearFailures(normalizedEmail);
 
     const roles = extractRoles(user.userRoles);
     const authUser: AuthenticatedUser = {
@@ -306,15 +308,17 @@ export class AuthService {
     data: z.infer<typeof RegisterAdminSchema>,
     requestingUserRoles: PanelRole[],
   ): Promise<AuthenticatedUser> {
+    const normalizedEmail = data.email.toLowerCase().trim();
+
     // Check defensivo — la capa de middleware ya debería haber bloqueado
     if (!requestingUserRoles.includes('SUPERADMIN')) {
       throw AppError.forbidden('Solo SUPERADMIN puede registrar administradores');
     }
 
     // Verificar que no exista
-    const existing = await this.prisma.user.findUnique({ where: { email: data.email } });
+    const existing = await this.prisma.user.findUnique({ where: { email: normalizedEmail } });
     if (existing) {
-      throw AppError.conflict(`El email ${data.email} ya está registrado`);
+      throw AppError.conflict(`El email ${normalizedEmail} ya está registrado`);
     }
 
     // Verificar que los roles sean válidos
@@ -329,7 +333,7 @@ export class AuthService {
 
     const newUser = await this.prisma.user.create({
       data: {
-        email: data.email,
+        email: normalizedEmail,
         hashedPassword,
         fullName: data.fullName,
         isActive: true,

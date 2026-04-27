@@ -174,10 +174,12 @@ export class AuthController {
       res.status(201).json({ user: newUser });
     } catch (err) {
       if (err instanceof ZodError) {
-        res.status(400).json({ error: 'Datos inválidos', details: err.issues });
-        return;
+        next(
+          AppError.badRequest(`Datos inválidos: ${err.issues[0]?.message ?? 'payload inválido'}`),
+        );
+      } else {
+        next(err);
       }
-      next(err);
     }
   };
 }

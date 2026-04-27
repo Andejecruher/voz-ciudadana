@@ -18,12 +18,13 @@ import { PrismaService } from '../services/prisma.service';
 import { RedisService } from '../services/redis.service';
 import { ConversationRepository } from '../services/repositories/conversation.repository';
 import { MessageRepository } from '../services/repositories/message.repository';
+import { UserService } from '../services/user.service';
 import { WebhookParserService } from '../services/whatsapp/webhook-parser.service';
 import { WhatsAppProvider } from '../services/whatsapp/whatsapp.provider';
-import { createAdminRouter } from './admin.routes';
 import { createAuthRouter } from './auth.routes';
 import { createHandoverRouter } from './handover.routes';
 import { createMessagesRouter } from './messages.routes';
+import { createUsersRouter } from './users.routes';
 import { createWebhookRouter } from './webhook.routes';
 
 type RouteDependencies = {
@@ -40,6 +41,7 @@ export function registerRoutes(app: Express, deps: RouteDependencies): void {
   const lockoutService = new LockoutService(deps.redis);
   const auditService = new AuditService(deps.prisma);
   const authService = new AuthService(deps.prisma, deps.redis, lockoutService);
+  const userService = new UserService(deps.prisma);
 
   // ── Messaging Core ─────────────────────────────────────────────────────────
   const webhookParser = new WebhookParserService();
@@ -73,7 +75,7 @@ export function registerRoutes(app: Express, deps: RouteDependencies): void {
 
   apiRouter.use('/webhook', createWebhookRouter(webhookController, deps.redis));
   apiRouter.use('/auth', createAuthRouter(authService, auditService, lockoutService));
-  apiRouter.use('/admin', createAdminRouter(deps.prisma, auditService));
+  apiRouter.use('/admin', createUsersRouter(userService, auditService));
   apiRouter.use('/messages', createMessagesRouter(messagesController));
   apiRouter.use('/handover', createHandoverRouter(handoverController));
 

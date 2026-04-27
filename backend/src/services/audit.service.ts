@@ -18,6 +18,7 @@ export type AuditAction =
   | 'user.deactivate'
   | 'user.list'
   | 'role.assign'
+  | 'role.remove'
   | 'auth.login'
   | 'auth.logout'
   | 'auth.logout_all';
