@@ -5,9 +5,8 @@ const FALLBACK_BASE_URL = 'https://voz-ciudadana-rust.vercel.app';
 export const siteConfig = {
   baseUrl: process.env.NEXT_PUBLIC_BASE_URL ?? FALLBACK_BASE_URL,
   siteName: 'Voz Ciudadana',
-  defaultTitle: 'Voz Ciudadana — Cintalapa tiene voz de mujer',
-  defaultDescription:
-    'Candidata de Cintalapa de Figueroa, Chiapas. Agua, seguridad y campo próspero para cada familia. Nací aquí, crecí aquí y juntas haremos historia.',
+  defaultTitle: 'Voz Ciudadana Cintalapa',
+  defaultDescription: 'Transformación y esperanza en nuestro municipio',
   locale: 'es_MX',
   ogImage: {
     path: '/images/og-image-optimice.jpg',

@@ -1,62 +1,38 @@
 import { cn } from '@/lib/utils';
 
-// --------------------------------------------------------------------------
-// VozCiudadana brand mark — guinda #711B2C with white inner shapes
-// Icon-only variant: just the shield badge
-// Horizontal variant: icon + logotype wordmark
-// --------------------------------------------------------------------------
-
 interface LogoIconProps {
   className?: string;
-  /** Fill override — defaults to brand guinda */
   color?: string;
+  accentColor?: string;
 }
 
-export function LogoIcon({ className, color = '#711B2C' }: LogoIconProps) {
+export function LogoIcon({ className, color = '#711B2C', accentColor = '#FFFFFF' }: LogoIconProps) {
   return (
     <svg
-      viewBox="0 0 40 40"
+      viewBox="0 0 64 64"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={cn('w-8 h-8', className)}
       aria-hidden="true"
     >
-      {/* Shield body */}
-      <path d="M20 3L5 9v11c0 8.5 6.4 16.4 15 18.4C28.6 36.4 35 28.5 35 20V9L20 3Z" fill={color} />
-      {/* Inner microphone / voice wave — white */}
-      <rect x="18" y="11" width="4" height="9" rx="2" fill="white" />
+      <rect x="4" y="4" width="56" height="56" rx="17" fill={color} />
       <path
-        d="M14.5 18.5a5.5 5.5 0 0 0 11 0"
-        stroke="white"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-        fill="none"
+        d="M32 15.5C22.8 15.5 15.4 22.1 15.4 30.3C15.4 35.9 18.8 40.8 23.8 43.4V51L31.2 45.9C31.5 45.9 31.8 45.9 32 45.9C41.2 45.9 48.6 39.3 48.6 31.1C48.6 22.1 41.2 15.5 32 15.5Z"
+        fill={accentColor}
       />
-      <line
-        x1="20"
-        y1="24"
-        x2="20"
-        y2="27"
-        stroke="white"
-        strokeWidth="1.8"
+      <path
+        d="M25.2 31.6L30 36.3L38.7 26.9"
+        stroke={color}
+        strokeWidth="3.5"
         strokeLinecap="round"
+        strokeLinejoin="round"
       />
-      <line
-        x1="17"
-        y1="27"
-        x2="23"
-        y2="27"
-        stroke="white"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
+      <circle cx="45" cy="18.2" r="2.6" fill={accentColor} opacity="0.85" />
     </svg>
   );
 }
 
 interface LogoHorizontalProps {
-  /** dark — guinda icon + dark text (use on white backgrounds) */
-  /** light — white icon + white text (use on dark/guinda backgrounds) */
   variant?: 'dark' | 'light';
   className?: string;
   showTagline?: boolean;
@@ -71,22 +47,27 @@ export function LogoHorizontal({
 
   return (
     <div className={cn('flex items-center gap-2.5', className)}>
-      <LogoIcon color={isDark ? '#711B2C' : 'white'} className="w-9 h-9 flex-shrink-0" />
+      <LogoIcon
+        className="w-10 h-10 shrink-0"
+        color={isDark ? '#711B2C' : '#FFFFFF'}
+        accentColor={isDark ? '#FFFFFF' : '#711B2C'}
+      />
+
       <div className="flex flex-col leading-none">
         <span
-          className="font-black text-[17px] tracking-tight"
-          style={{ color: isDark ? '#711B2C' : 'white' }}
+          className="font-black text-[18px] tracking-tight"
+          style={{ color: isDark ? '#711B2C' : '#FFFFFF' }}
         >
           Voz Ciudadana
         </span>
-        {showTagline && (
+        {showTagline ? (
           <span
-            className="text-[9.5px] font-semibold uppercase tracking-widest mt-0.5"
-            style={{ color: isDark ? '#475569' : 'rgba(255,255,255,0.65)' }}
+            className="mt-0.5 text-[9.5px] font-bold uppercase tracking-[0.18em]"
+            style={{ color: isDark ? '#475569' : 'rgba(255,255,255,0.82)' }}
           >
-            Cintalapa de Figueroa, Chiapas
+            Cintalapa de Figueroa
           </span>
-        )}
+        ) : null}
       </div>
     </div>
   );

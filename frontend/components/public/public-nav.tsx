@@ -1,8 +1,9 @@
 'use client';
 
+import { LogoHorizontal } from '@/components/logo';
 import { cn } from '@/lib/utils';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Check, Menu, X } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
@@ -32,28 +33,12 @@ export function PublicNav() {
     >
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 group">
-          <div className="w-8 h-8 rounded-md bg-primary flex items-center justify-center">
-            <Check className="w-4 h-4 text-primary-foreground stroke-3" />
-          </div>
-          <div className="flex flex-col leading-none">
-            <span
-              className={cn(
-                'font-black text-lg tracking-tight transition-colors',
-                scrolled ? 'text-primary' : 'text-white',
-              )}
-            >
-              Voz Ciudadana
-            </span>
-            <span
-              className={cn(
-                'text-[10px] font-semibold uppercase tracking-widest transition-colors',
-                scrolled ? 'text-muted-foreground' : 'text-white/70',
-              )}
-            >
-              Cintalapa de Figueroa, Chiapas
-            </span>
-          </div>
+        <Link href="/" className="flex items-center group min-w-0">
+          <LogoHorizontal
+            variant={scrolled ? 'dark' : 'light'}
+            className="h-10 w-auto shrink-0"
+            showTagline
+          />
         </Link>
 
         {/* Desktop nav */}

@@ -1,20 +1,20 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { LogoIcon } from '@/components/logo';
+import { cn } from '@/lib/utils';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
-  Inbox,
-  LayoutDashboard,
-  Users,
+  Bell,
   CalendarDays,
-  Settings,
-  Check,
   ChevronLeft,
   ChevronRight,
-  Bell,
+  Inbox,
+  LayoutDashboard,
   LogOut,
-} from 'lucide-react'
-import { cn } from '@/lib/utils'
+  Settings,
+  Users,
+} from 'lucide-react';
+import { useState } from 'react';
 
 const NAV_ITEMS = [
   { icon: LayoutDashboard, label: 'Resumen', href: '/admin/resumen' },
@@ -22,15 +22,15 @@ const NAV_ITEMS = [
   { icon: Users, label: 'Ciudadanos', href: '/admin/ciudadanos' },
   { icon: CalendarDays, label: 'Eventos', href: '/admin/eventos' },
   { icon: Settings, label: 'Configuración', href: '/admin/settings', badge: undefined },
-]
+];
 
 interface SidebarProps {
-  activeItem?: string
-  activePath?: string
+  activeItem?: string;
+  activePath?: string;
 }
 
 export function AdminSidebar({ activeItem, activePath }: SidebarProps) {
-  const [collapsed, setCollapsed] = useState(false)
+  const [collapsed, setCollapsed] = useState(false);
 
   return (
     <motion.aside
@@ -39,10 +39,8 @@ export function AdminSidebar({ activeItem, activePath }: SidebarProps) {
       className="relative flex flex-col bg-sidebar border-r border-sidebar-border h-screen flex-shrink-0 overflow-hidden"
     >
       {/* Logo */}
-      <div className="flex items-center gap-3 px-4 h-16 border-b border-sidebar-border flex-shrink-0">
-        <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
-          <Check className="w-4 h-4 text-primary-foreground stroke-[3]" />
-        </div>
+      <div className="flex items-center gap-3 px-4 h-16 border-b border-sidebar-border flex-shrink-0 min-w-0">
+        <LogoIcon className="w-8 h-8 flex-shrink-0" />
         <AnimatePresence>
           {!collapsed && (
             <motion.div
@@ -50,6 +48,7 @@ export function AdminSidebar({ activeItem, activePath }: SidebarProps) {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -10 }}
               transition={{ duration: 0.15 }}
+              className="min-w-0 overflow-hidden"
             >
               <div className="text-sidebar-foreground font-black text-sm tracking-tight whitespace-nowrap leading-none">
                 Voz Ciudadana
@@ -65,9 +64,7 @@ export function AdminSidebar({ activeItem, activePath }: SidebarProps) {
       {/* Nav */}
       <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
         {NAV_ITEMS.map(({ icon: Icon, label, href, badge }) => {
-          const isActive = activePath
-            ? activePath === href
-            : label === activeItem
+          const isActive = activePath ? activePath === href : label === activeItem;
           return (
             <a
               key={label}
@@ -76,7 +73,7 @@ export function AdminSidebar({ activeItem, activePath }: SidebarProps) {
                 'flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors group relative',
                 isActive
                   ? 'bg-sidebar-primary/20 text-sidebar-primary'
-                  : 'text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                  : 'text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
               )}
             >
               <div className="relative flex-shrink-0">
@@ -106,7 +103,7 @@ export function AdminSidebar({ activeItem, activePath }: SidebarProps) {
                 </span>
               )}
             </a>
-          )
+          );
         })}
       </nav>
 
@@ -150,12 +147,8 @@ export function AdminSidebar({ activeItem, activePath }: SidebarProps) {
         className="absolute -right-3 top-20 w-6 h-6 bg-sidebar-border border border-sidebar-border rounded-full flex items-center justify-center text-sidebar-foreground hover:bg-sidebar-accent transition-colors z-10"
         aria-label={collapsed ? 'Expandir sidebar' : 'Colapsar sidebar'}
       >
-        {collapsed ? (
-          <ChevronRight className="w-3 h-3" />
-        ) : (
-          <ChevronLeft className="w-3 h-3" />
-        )}
+        {collapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronLeft className="w-3 h-3" />}
       </button>
     </motion.aside>
-  )
+  );
 }

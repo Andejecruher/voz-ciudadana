@@ -51,6 +51,16 @@ export const metadata: Metadata = {
   alternates: {
     canonical: siteConfig.baseUrl,
   },
+
+  icons: {
+    icon: [
+      { url: '/icon.svg', type: 'image/svg+xml' },
+      { url: '/icon-dark-32x32.png', sizes: '32x32', type: 'image/png' },
+    ],
+    apple: '/apple-icon.png',
+  },
+
+  manifest: '/manifest.json',
 };
 
 const jsonLd = {
@@ -77,7 +87,7 @@ export default function RootLayout({
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <meta name="theme-color" content="#6B1A3A" />
+        <meta name="theme-color" content="#711B2C" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
