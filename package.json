@@ -1,4 +1,9 @@
 {
+	"scripts": {
+		"lint": "pnpm --dir backend run lint && pnpm --dir frontend run lint",
+		"typecheck": "pnpm --dir backend run typecheck && pnpm --dir frontend run typecheck",
+		"test": "pnpm --dir backend run test"
+	},
 	"devDependencies": {
 		"prisma": "^7.8.0"
 	},
