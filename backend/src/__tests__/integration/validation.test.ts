@@ -1,11 +1,12 @@
 /**
  * Integration tests: validation middleware con Zod
  */
+import { describe, expect, it } from '@jest/globals';
 import request from 'supertest';
 import { z } from 'zod';
-import { createTestApp } from '../setup/test-app';
 import { validate } from '../../middlewares/validation';
 import type { ErrorResponse, SuccessResponse } from '../../utils/api-response';
+import { createTestApp } from '../setup/test-app';
 
 const CreateSchema = z.object({
   name: z.string().min(1),
@@ -54,7 +55,9 @@ describe('validate() middleware', () => {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     expect(Array.isArray((res.body as Record<string, unknown>)['issues'])).toBe(true);
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    expect(((res.body as Record<string, unknown>)['issues'] as unknown[]).length).toBeGreaterThan(0);
+    expect(((res.body as Record<string, unknown>)['issues'] as unknown[]).length).toBeGreaterThan(
+      0,
+    );
   });
 
   it('debe rechazar body vacío (campos requeridos faltantes)', async () => {

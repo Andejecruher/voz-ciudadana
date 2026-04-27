@@ -1,3 +1,4 @@
+import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import request from 'supertest';
 import { createAuthRouter } from '../../routes/auth.routes';
 import { createUsersRouter } from '../../routes/users.routes';
@@ -71,64 +72,47 @@ jest.mock('../../middlewares/auth.middleware', () => ({
   },
 }));
 
-type MockFn<TArgs extends unknown[] = unknown[], TReturn = unknown> = jest.Mock<TReturn, TArgs>;
+type AsyncFn<TArgs extends unknown[], TResult> = (...args: TArgs) => Promise<TResult>;
 
-type AuthServiceMock = {
-  login: MockFn<
-    [string, string, string],
-    Promise<{ accessToken: string; refreshToken: string; user: Record<string, unknown> }>
-  >;
-  refresh: MockFn<
-    [string, string, { ip?: string; userAgent?: string }?],
-    Promise<Record<string, unknown>>
-  >;
-  me: MockFn<[string], Promise<Record<string, unknown>>>;
-  logout: MockFn<[string, string?], Promise<void>>;
-  logoutAll: MockFn<[string], Promise<void>>;
-  registerAdmin: MockFn<[Record<string, unknown>, string[]], Promise<Record<string, unknown>>>;
+type LoginResult = {
+  accessToken: string;
+  refreshToken: string;
+  user: Record<string, unknown>;
 };
 
-type LockoutServiceMock = {
-  checkIpRateLimit: MockFn<[string], Promise<void>>;
-  checkLockout: MockFn<[string, { ip?: string; userAgent?: string }?], Promise<void>>;
-  checkRefreshRateLimit: MockFn<[string], Promise<void>>;
+const authService = {
+  login: jest.fn<AsyncFn<[string, string, string], LoginResult>>(),
+  refresh:
+    jest.fn<
+      AsyncFn<[string, string, { ip?: string; userAgent?: string }?], Record<string, unknown>>
+    >(),
+  me: jest.fn<AsyncFn<[string], Record<string, unknown>>>(),
+  logout: jest.fn<AsyncFn<[string, string?], void>>(),
+  logoutAll: jest.fn<AsyncFn<[string], void>>(),
+  registerAdmin: jest.fn<AsyncFn<[Record<string, unknown>, string[]], Record<string, unknown>>>(),
 };
 
-type UserServiceMock = {
-  listUsers: MockFn<[], Promise<Array<Record<string, unknown>>>>;
-  getUserById: MockFn<[string], Promise<Record<string, unknown>>>;
-  createUser: MockFn<[Record<string, unknown>], Promise<Record<string, unknown>>>;
-  updateUser: MockFn<[string, Record<string, unknown>], Promise<Record<string, unknown>>>;
-  assignRole: MockFn<[string, string], Promise<Record<string, unknown>>>;
-  removeRole: MockFn<[string, string], Promise<Record<string, unknown>>>;
+const lockoutService = {
+  checkIpRateLimit: jest.fn<AsyncFn<[string], void>>().mockResolvedValue(undefined),
+  checkLockout: jest
+    .fn<AsyncFn<[string, { ip?: string; userAgent?: string }?], void>>()
+    .mockResolvedValue(undefined),
+  checkRefreshRateLimit: jest.fn<AsyncFn<[string], void>>().mockResolvedValue(undefined),
 };
 
-const authService: AuthServiceMock = {
-  login: jest.fn(),
-  refresh: jest.fn(),
-  me: jest.fn(),
-  logout: jest.fn(),
-  logoutAll: jest.fn(),
-  registerAdmin: jest.fn(),
-};
-
-const lockoutService: LockoutServiceMock = {
-  checkIpRateLimit: jest.fn().mockResolvedValue(undefined),
-  checkLockout: jest.fn().mockResolvedValue(undefined),
-  checkRefreshRateLimit: jest.fn().mockResolvedValue(undefined),
-};
-
-const userService: UserServiceMock = {
-  listUsers: jest.fn(),
-  getUserById: jest.fn(),
-  createUser: jest.fn(),
-  updateUser: jest.fn(),
-  assignRole: jest.fn(),
-  removeRole: jest.fn(),
+const userService = {
+  listUsers: jest.fn<AsyncFn<[], Array<Record<string, unknown>>>>(),
+  getUserById: jest.fn<AsyncFn<[string], Record<string, unknown>>>(),
+  createUser: jest.fn<AsyncFn<[Record<string, unknown>], Record<string, unknown>>>(),
+  updateUser: jest.fn<AsyncFn<[string, Record<string, unknown>], Record<string, unknown>>>(),
+  assignRole: jest.fn<AsyncFn<[string, string], Record<string, unknown>>>(),
+  removeRole: jest.fn<AsyncFn<[string, string], Record<string, unknown>>>(),
 };
 
 const auditService = {
-  logFromRequest: jest.fn().mockResolvedValue(undefined),
+  logFromRequest: jest
+    .fn<AsyncFn<[unknown, Record<string, unknown>], void>>()
+    .mockResolvedValue(undefined),
 };
 
 const app = createTestApp((_, router) => {

@@ -4,15 +4,11 @@
  * Levanta una mini-app Express (sin Prisma/Redis/bot) para verificar
  * que el error handler produce el contrato { success: false, error, code? }.
  */
+import { describe, expect, it } from '@jest/globals';
 import request from 'supertest';
-import { createTestApp } from '../setup/test-app';
-import {
-  AppError,
-  ValidationError,
-  NotFoundError,
-  ForbiddenError,
-} from '../../utils/app-error';
 import type { ErrorResponse, SuccessResponse } from '../../utils/api-response';
+import { AppError, ForbiddenError, NotFoundError, ValidationError } from '../../utils/app-error';
+import { createTestApp } from '../setup/test-app';
 
 const app = createTestApp((_, router) => {
   // Ruta que lanza AppError

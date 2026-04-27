@@ -7,17 +7,25 @@
  * 3. Non-text durante registro → fallback
  * 4. Completion handover: REGISTERING → DEPARTMENT_ROUTING → HUMAN_FLOW
  */
+import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { ConversationStatus, LeadStatus } from '@prisma/client';
 import { BotFsmState, BotService } from '../../services/bot.service';
-import { LeadStatus, SourceChannel, ConversationStatus } from '@prisma/client';
 
+type AsyncFn<TArgs extends unknown[], TResult> = (...args: TArgs) => Promise<TResult>;
+
+// ...existing code...
 // ─── Shared mocks ─────────────────────────────────────────────────────────────
 
 function makeRedisMock() {
   const store: Record<string, string> = {};
   return {
     get: jest.fn(async (key: string) => store[key] ?? null),
-    set: jest.fn(async (key: string, value: string, _ttl?: number) => { store[key] = value; }),
-    del: jest.fn(async (key: string) => { delete store[key]; }),
+    set: jest.fn(async (key: string, value: string, _ttl?: number) => {
+      store[key] = value;
+    }),
+    del: jest.fn(async (key: string) => {
+      delete store[key];
+    }),
     incr: jest.fn(async (_key: string, _ttl?: number) => 1),
     _store: store,
   };
@@ -26,33 +34,43 @@ function makeRedisMock() {
 function makePrismaMock() {
   return {
     citizen: {
-      findUnique: jest.fn(),
-      upsert: jest.fn(),
-      update: jest.fn(),
+      findUnique: jest.fn<AsyncFn<unknown[], Record<string, unknown> | null>>(),
+      upsert: jest.fn<AsyncFn<unknown[], Record<string, unknown>>>(),
+      update: jest.fn<AsyncFn<unknown[], Record<string, unknown>>>(),
     },
     neighborhood: {
-      findMany: jest.fn().mockResolvedValue([
-        { id: 'n1', name: 'Centro' },
-        { id: 'n2', name: 'Norte' },
-      ]),
+      findMany: jest
+        .fn<AsyncFn<unknown[], Array<{ id: string; name: string }>>>()
+        .mockResolvedValue([
+          { id: 'n1', name: 'Centro' },
+          { id: 'n2', name: 'Norte' },
+        ]),
     },
     conversation: {
-      findFirst: jest.fn().mockResolvedValue(null),
-      create: jest.fn().mockResolvedValue({ id: 'conv1', status: ConversationStatus.open }),
+      findFirst: jest
+        .fn<AsyncFn<unknown[], Record<string, unknown> | null>>()
+        .mockResolvedValue(null),
+      create: jest
+        .fn<AsyncFn<unknown[], { id: string; status: ConversationStatus }>>()
+        .mockResolvedValue({ id: 'conv1', status: ConversationStatus.open }),
     },
-    message: { create: jest.fn() },
+    message: { create: jest.fn<AsyncFn<unknown[], Record<string, unknown>>>() },
     outboxEvent: {
-      findUnique: jest.fn().mockResolvedValue(null),
-      create: jest.fn().mockResolvedValue({ id: 'outbox1' }),
-      update: jest.fn(),
+      findUnique: jest
+        .fn<AsyncFn<unknown[], Record<string, unknown> | null>>()
+        .mockResolvedValue(null),
+      create: jest.fn<AsyncFn<unknown[], { id: string }>>().mockResolvedValue({ id: 'outbox1' }),
+      update: jest.fn<AsyncFn<unknown[], Record<string, unknown>>>(),
     },
   };
 }
 
 function makeWaMock() {
   return {
-    sendText: jest.fn().mockResolvedValue({ messages: [{ id: 'out-wamid-001' }] }),
-    markAsRead: jest.fn().mockResolvedValue({}),
+    sendText: jest
+      .fn<AsyncFn<unknown[], { messages: Array<{ id: string }> }>>()
+      .mockResolvedValue({ messages: [{ id: 'out-wamid-001' }] }),
+    markAsRead: jest.fn<AsyncFn<unknown[], Record<string, never>>>().mockResolvedValue({}),
   };
 }
 
@@ -89,7 +107,7 @@ describe('Replay protection (wamid duplicado)', () => {
 
     // Segundo procesamiento con mismo wamid
     await bot.handleMessage(PHONE, 'hola', `${BASE_WAMID}-dup`, 'corr-2');
-    
+
     // No deben haber más llamadas
     expect(wa.sendText).toHaveBeenCalledTimes(callsAfterFirst);
   });
@@ -138,7 +156,7 @@ describe('Happy path: registro completo end-to-end', () => {
   it('4: intereses → AWAITING_INTERESTS → COMPLETED, leadStatus = converted', async () => {
     await bot.saveResponse(PHONE, BotFsmState.AWAITING_INTERESTS, {});
     await bot.handleMessage(PHONE, '1,2,3', `${BASE_WAMID}-4`, 'corr-hp4');
-    
+
     expect(prisma.citizen.update).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ leadStatus: LeadStatus.converted }),
@@ -146,7 +164,10 @@ describe('Happy path: registro completo end-to-end', () => {
     );
     const session = await bot.getSession(PHONE);
     expect(session.state).toBe(BotFsmState.COMPLETED);
-    expect(wa.sendText).toHaveBeenCalledWith(PHONE_NORM, expect.stringContaining('Registro completado'));
+    expect(wa.sendText).toHaveBeenCalledWith(
+      PHONE_NORM,
+      expect.stringContaining('Registro completado'),
+    );
   });
 });
 
@@ -161,9 +182,9 @@ describe('Non-text fallback durante registro', () => {
 
     // Simular que está en medio del registro
     await bot.saveResponse(PHONE, BotFsmState.NEIGHBORHOOD, {});
-    
+
     await bot.handleNonTextMessage(PHONE, `${BASE_WAMID}-audio`, 'corr-nt1');
-    
+
     expect(wa.sendText).toHaveBeenCalledWith(
       PHONE_NORM,
       expect.stringContaining('solo puedo procesar mensajes de texto'),
@@ -177,9 +198,9 @@ describe('Non-text fallback durante registro', () => {
     const bot = makeBot(prisma, redis, wa);
 
     await bot.saveResponse(PHONE, BotFsmState.COMPLETED, {});
-    
+
     await bot.handleNonTextMessage(PHONE, `${BASE_WAMID}-audio2`, 'corr-nt2');
-    
+
     expect(wa.sendText).not.toHaveBeenCalled();
   });
 });
@@ -194,13 +215,13 @@ describe('Completion handover: FSM Redis vs flowState DB', () => {
     const bot = makeBot(prisma, redis, wa);
 
     prisma.citizen.update.mockResolvedValue({});
-    
+
     await bot.saveResponse(PHONE, BotFsmState.AWAITING_INTERESTS, {});
     await bot.handleMessage(PHONE, '1,4', `${BASE_WAMID}-handover`, 'corr-ho1');
-    
+
     const session = await bot.getSession(PHONE);
     expect(session.state).toBe(BotFsmState.COMPLETED);
-    
+
     // Verificar que se marcó leadStatus.converted en DB
     expect(prisma.citizen.update).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -228,6 +249,9 @@ describe('Completion handover: FSM Redis vs flowState DB', () => {
 
     const session = await bot.getSession(PHONE);
     expect(session.state).toBe(BotFsmState.COMPLETED);
-    expect(wa.sendText).toHaveBeenCalledWith(PHONE_NORM, expect.stringContaining('Bienvenido de vuelta'));
+    expect(wa.sendText).toHaveBeenCalledWith(
+      PHONE_NORM,
+      expect.stringContaining('Bienvenido de vuelta'),
+    );
   });
 });

@@ -1,11 +1,12 @@
 /**
  * Integration tests: pagination middleware cursor-based
  */
+import { describe, expect, it } from '@jest/globals';
 import request from 'supertest';
-import { createTestApp } from '../setup/test-app';
-import { paginate } from '../../middlewares/pagination';
 import type { PaginationParams } from '../../middlewares/pagination';
+import { paginate } from '../../middlewares/pagination';
 import type { ErrorResponse, SuccessResponse } from '../../utils/api-response';
+import { createTestApp } from '../setup/test-app';
 
 const app = createTestApp((_, router) => {
   router.get('/test/paginate', paginate(), (req, res) => {

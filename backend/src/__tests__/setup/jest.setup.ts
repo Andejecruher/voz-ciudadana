@@ -1,3 +1,6 @@
+import { jest } from '@jest/globals';
+
+// ...existing code...
 /**
  * Configuración global de Jest para tests de integración y unit.
  *
