@@ -24,6 +24,7 @@ import { PrismaService } from '../services/prisma.service';
 import { RedisService } from '../services/redis.service';
 import { ConversationRepository } from '../services/repositories/conversation.repository';
 import { MessageRepository } from '../services/repositories/message.repository';
+import { SystemService } from '../services/system.service';
 import { TagsService } from '../services/tags.service';
 import { UserService } from '../services/user.service';
 import { WebhookParserService } from '../services/whatsapp/webhook-parser.service';
@@ -35,6 +36,7 @@ import { createDepartmentsRouter } from './departments.routes';
 import { createHandoverRouter } from './handover.routes';
 import { createMessagesRouter } from './messages.routes';
 import { createNeighborhoodsRouter } from './neighborhoods.routes';
+import { createSystemRouter } from './system.routes';
 import { createTagsRouter } from './tags.routes';
 import { createUsersRouter } from './users.routes';
 import { createWebhookRouter } from './webhook.routes';
@@ -56,6 +58,7 @@ export function registerRoutes(app: Express, deps: RouteDependencies): void {
   const userService = new UserService(deps.prisma);
   const neighborhoodsService = new NeighborhoodsService(deps.prisma);
   const tagsService = new TagsService(deps.prisma);
+  const systemService = new SystemService(deps.prisma, deps.redis);
   const citizensService = new CitizensService(deps.prisma);
   const departmentsService = new DepartmentsService(deps.prisma);
 
@@ -112,6 +115,7 @@ export function registerRoutes(app: Express, deps: RouteDependencies): void {
   apiRouter.use('/messages', createMessagesRouter(messagesController));
   apiRouter.use('/handover', createHandoverRouter(handoverController));
   apiRouter.use('/conversations', createConversationsRouter(conversationsController));
+  apiRouter.use('/system', createSystemRouter(systemService));
 
   app.get('/health', (_req: Request, res: Response) => {
     res.json({ status: 'ok', ts: new Date().toISOString() });

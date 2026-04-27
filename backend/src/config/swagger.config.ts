@@ -585,6 +585,79 @@ const schemas: Record<string, SchemaObject> = {
       },
     },
   },
+  AuditLogRecord: {
+    type: 'object',
+    required: ['id', 'action', 'targetType', 'createdAt'],
+    properties: {
+      id: { type: 'string', format: 'uuid' },
+      actorId: {
+        type: 'string',
+        format: 'uuid',
+        nullable: true,
+        description: 'null si la acción fue del sistema',
+      },
+      action: {
+        type: 'string',
+        example: 'user.create',
+        description: 'Código de la acción auditada',
+      },
+      targetType: { type: 'string', example: 'User', description: 'Tipo del recurso afectado' },
+      targetId: { type: 'string', nullable: true, example: '550e8400-e29b-41d4-a716-446655440000' },
+      metadata: {
+        type: 'object',
+        description: 'Datos adicionales de la acción',
+        example: { email: 'nuevo@vozciudadana.gob' },
+      },
+      ip: { type: 'string', nullable: true, example: '192.168.1.1' },
+      userAgent: { type: 'string', nullable: true, example: 'Mozilla/5.0...' },
+      createdAt: { type: 'string', format: 'date-time' },
+    },
+  },
+  InboxEventRecord: {
+    type: 'object',
+    required: ['id', 'wamid', 'phone', 'status', 'retryCount', 'createdAt'],
+    properties: {
+      id: { type: 'string', format: 'uuid' },
+      wamid: {
+        type: 'string',
+        example: 'wamid.HBgLNTQ5...AA',
+        description: 'ID único del mensaje en Meta',
+      },
+      phone: { type: 'string', example: '+5491123456789' },
+      status: {
+        type: 'string',
+        enum: ['pending', 'processing', 'processed', 'failed', 'dead_lettered'],
+        example: 'failed',
+      },
+      retryCount: { type: 'integer', minimum: 0, example: 3 },
+      lastError: { type: 'string', nullable: true, example: 'Connection timeout' },
+      lastErrorAt: { type: 'string', format: 'date-time', nullable: true },
+      idempotencyKey: { type: 'string', nullable: true, example: 'wamid.HBgLNTQ5...AA' },
+      createdAt: { type: 'string', format: 'date-time' },
+      processedAt: { type: 'string', format: 'date-time', nullable: true },
+    },
+  },
+  OutboxEventRecord: {
+    type: 'object',
+    required: ['id', 'phone', 'status', 'retryCount', 'idempotencyKey', 'createdAt'],
+    properties: {
+      id: { type: 'string', format: 'uuid' },
+      conversationId: { type: 'string', format: 'uuid', nullable: true },
+      phone: { type: 'string', example: '+5491187654321' },
+      status: {
+        type: 'string',
+        enum: ['pending', 'sending', 'sent', 'failed', 'dead_lettered'],
+        example: 'failed',
+      },
+      retryCount: { type: 'integer', minimum: 0, example: 5 },
+      nextRetryAt: { type: 'string', format: 'date-time', nullable: true },
+      lastError: { type: 'string', nullable: true, example: 'Meta API error 500' },
+      wamid: { type: 'string', nullable: true, example: 'wamid.HBgLNTQ5...AA' },
+      idempotencyKey: { type: 'string', example: 'idem_outbox_001' },
+      createdAt: { type: 'string', format: 'date-time' },
+      sentAt: { type: 'string', format: 'date-time', nullable: true },
+    },
+  },
   SystemConfig: {
     type: 'object',
     properties: {
@@ -2585,6 +2658,461 @@ const paths: PathsObject = {
     },
   },
 
+  // ── System observability ────────────────────────────────────────────────────
+
+  '/api/v1/system/audit-logs': {
+    get: {
+      tags: ['System'],
+      summary: 'Listar audit logs',
+      description: [
+        'Retorna el registro inmutable de acciones administrativas sensibles.',
+        'Solo lectura — append-only por diseño.',
+        '',
+        '**Filtros disponibles**: `actorId`, `action`, `targetType`, `dateFrom`, `dateTo`.',
+        '**Paginación**: cursor-based (`cursor` + `limit`), ordenado por `createdAt DESC`.',
+        '',
+        'Acceso exclusivo para **SUPERADMIN**.',
+      ].join('\n'),
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          in: 'query',
+          name: 'actorId',
+          schema: { type: 'string', format: 'uuid' },
+          description: 'Filtrar por actor (usuario que ejecutó la acción)',
+        },
+        {
+          in: 'query',
+          name: 'action',
+          schema: { type: 'string' },
+          description: 'Filtrar por código de acción (ej: user.create)',
+          example: 'user.create',
+        },
+        {
+          in: 'query',
+          name: 'targetType',
+          schema: { type: 'string' },
+          description: 'Filtrar por tipo de recurso afectado (ej: User, Role)',
+          example: 'User',
+        },
+        {
+          in: 'query',
+          name: 'dateFrom',
+          schema: { type: 'string', format: 'date-time' },
+          description: 'Fecha de inicio del rango (ISO 8601)',
+          example: '2024-01-01T00:00:00.000Z',
+        },
+        {
+          in: 'query',
+          name: 'dateTo',
+          schema: { type: 'string', format: 'date-time' },
+          description: 'Fecha de fin del rango (ISO 8601)',
+          example: '2024-12-31T23:59:59.999Z',
+        },
+        {
+          in: 'query',
+          name: 'cursor',
+          schema: { type: 'string', format: 'uuid' },
+          description: 'Cursor de paginación (id del último item de la página anterior)',
+        },
+        {
+          in: 'query',
+          name: 'limit',
+          schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 },
+          description: 'Cantidad de items por página',
+        },
+      ],
+      responses: {
+        200: {
+          description: 'Lista de audit logs',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['auditLogs', 'meta'],
+                properties: {
+                  auditLogs: {
+                    type: 'array',
+                    items: { $ref: '#/components/schemas/AuditLogRecord' },
+                  },
+                  meta: { $ref: '#/components/schemas/CursorPaginationMeta' },
+                },
+              },
+              example: {
+                auditLogs: [
+                  {
+                    id: '550e8400-e29b-41d4-a716-446655440010',
+                    actorId: '550e8400-e29b-41d4-a716-446655440001',
+                    action: 'user.create',
+                    targetType: 'User',
+                    targetId: '550e8400-e29b-41d4-a716-446655440002',
+                    metadata: { email: 'nuevo@vozciudadana.gob' },
+                    ip: '192.168.1.1',
+                    userAgent: 'Mozilla/5.0...',
+                    createdAt: '2024-04-27T10:30:00.000Z',
+                  },
+                ],
+                meta: { nextCursor: null, hasNextPage: false, count: 1 },
+              },
+            },
+          },
+        },
+        400: {
+          description: 'Filtros inválidos (actorId no UUID, fecha no ISO)',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ValidationErrorResponse' },
+            },
+          },
+        },
+        401: { $ref: '#/components/responses/Unauthorized' },
+        403: { $ref: '#/components/responses/Forbidden' },
+        500: { $ref: '#/components/responses/InternalError' },
+      },
+    },
+  },
+
+  '/api/v1/system/inbox-events': {
+    get: {
+      tags: ['System'],
+      summary: 'Listar inbox events',
+      description: [
+        'Retorna los eventos de webhook entrantes (inbox queue persistente).',
+        'Útil para diagnosticar mensajes fallidos y monitorear la cola de procesamiento.',
+        '',
+        '**Filtros**: `status`, `phone`, `dateFrom`, `dateTo`, `retryCountGte`, `retryCountLte`.',
+        '**Paginación**: cursor-based, ordenado por `createdAt DESC`.',
+        '',
+        'Acceso exclusivo para **SUPERADMIN**.',
+      ].join('\n'),
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          in: 'query',
+          name: 'status',
+          schema: {
+            type: 'string',
+            enum: ['pending', 'processing', 'processed', 'failed', 'dead_lettered'],
+          },
+          description: 'Filtrar por estado del evento',
+        },
+        {
+          in: 'query',
+          name: 'phone',
+          schema: { type: 'string' },
+          description: 'Filtrar por número de teléfono del remitente',
+          example: '5491123456789',
+        },
+        {
+          in: 'query',
+          name: 'dateFrom',
+          schema: { type: 'string', format: 'date-time' },
+          description: 'Fecha de inicio del rango (ISO 8601)',
+        },
+        {
+          in: 'query',
+          name: 'dateTo',
+          schema: { type: 'string', format: 'date-time' },
+          description: 'Fecha de fin del rango (ISO 8601)',
+        },
+        {
+          in: 'query',
+          name: 'retryCountGte',
+          schema: { type: 'integer', minimum: 0 },
+          description: 'Filtrar eventos con retryCount >= valor',
+          example: 2,
+        },
+        {
+          in: 'query',
+          name: 'retryCountLte',
+          schema: { type: 'integer', minimum: 0 },
+          description: 'Filtrar eventos con retryCount <= valor',
+          example: 5,
+        },
+        {
+          in: 'query',
+          name: 'cursor',
+          schema: { type: 'string', format: 'uuid' },
+          description: 'Cursor de paginación',
+        },
+        {
+          in: 'query',
+          name: 'limit',
+          schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 },
+          description: 'Cantidad de items por página',
+        },
+      ],
+      responses: {
+        200: {
+          description: 'Lista de inbox events',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['inboxEvents', 'meta'],
+                properties: {
+                  inboxEvents: {
+                    type: 'array',
+                    items: { $ref: '#/components/schemas/InboxEventRecord' },
+                  },
+                  meta: { $ref: '#/components/schemas/CursorPaginationMeta' },
+                },
+              },
+            },
+          },
+        },
+        400: {
+          description: 'Filtros inválidos (status no permitido, retryCount no numérico)',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ValidationErrorResponse' },
+            },
+          },
+        },
+        401: { $ref: '#/components/responses/Unauthorized' },
+        403: { $ref: '#/components/responses/Forbidden' },
+        500: { $ref: '#/components/responses/InternalError' },
+      },
+    },
+  },
+
+  '/api/v1/system/inbox-events/{id}/reprocess': {
+    post: {
+      tags: ['System'],
+      summary: 'Reprocesar inbox event fallido',
+      description: [
+        'Resetea el `retryCount` y el estado del `InboxEvent` a `pending`,',
+        'limpia el error registrado y re-encola el evento en la Redis inbox queue.',
+        '',
+        '**Solo válido** para eventos en estado `failed` o `dead_lettered`.',
+        'Devuelve 400 si el estado es cualquier otro.',
+        '',
+        '⚠️ Puede causar duplicados si el evento ya está siendo procesado.',
+        'Verificar el estado antes de reprocesar.',
+        '',
+        'Acceso exclusivo para **SUPERADMIN**.',
+      ].join('\n'),
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          in: 'path',
+          name: 'id',
+          required: true,
+          schema: { type: 'string', format: 'uuid' },
+          description: 'ID del InboxEvent a reprocesar',
+        },
+      ],
+      responses: {
+        200: {
+          description: 'Evento re-encolado exitosamente',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['inboxEvent'],
+                properties: { inboxEvent: { $ref: '#/components/schemas/InboxEventRecord' } },
+              },
+              example: {
+                inboxEvent: {
+                  id: '550e8400-e29b-41d4-a716-446655440020',
+                  wamid: 'wamid.HBgLNTQ5...AA',
+                  phone: '+5491123456789',
+                  status: 'pending',
+                  retryCount: 0,
+                  lastError: null,
+                  lastErrorAt: null,
+                  idempotencyKey: 'wamid.HBgLNTQ5...AA',
+                  createdAt: '2024-04-27T10:00:00.000Z',
+                  processedAt: null,
+                },
+              },
+            },
+          },
+        },
+        400: {
+          description: "El evento no está en estado 'failed' o 'dead_lettered', o el id no es UUID",
+          content: {
+            'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+          },
+        },
+        401: { $ref: '#/components/responses/Unauthorized' },
+        403: { $ref: '#/components/responses/Forbidden' },
+        404: { $ref: '#/components/responses/NotFound' },
+        500: { $ref: '#/components/responses/InternalError' },
+      },
+    },
+  },
+
+  '/api/v1/system/outbox-events': {
+    get: {
+      tags: ['System'],
+      summary: 'Listar outbox events',
+      description: [
+        'Retorna los eventos de la outbox queue (mensajes salientes a Meta API).',
+        'Útil para diagnosticar envíos fallidos y monitorear el estado de entrega.',
+        '',
+        '**Filtros**: `status`, `phone`, `dateFrom`, `dateTo`, `retryCountGte`, `retryCountLte`.',
+        '**Paginación**: cursor-based, ordenado por `createdAt DESC`.',
+        '',
+        'Acceso exclusivo para **SUPERADMIN**.',
+      ].join('\n'),
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          in: 'query',
+          name: 'status',
+          schema: {
+            type: 'string',
+            enum: ['pending', 'sending', 'sent', 'failed', 'dead_lettered'],
+          },
+          description: 'Filtrar por estado del evento',
+        },
+        {
+          in: 'query',
+          name: 'phone',
+          schema: { type: 'string' },
+          description: 'Filtrar por número de teléfono del destinatario',
+          example: '5491187654321',
+        },
+        {
+          in: 'query',
+          name: 'dateFrom',
+          schema: { type: 'string', format: 'date-time' },
+          description: 'Fecha de inicio del rango (ISO 8601)',
+        },
+        {
+          in: 'query',
+          name: 'dateTo',
+          schema: { type: 'string', format: 'date-time' },
+          description: 'Fecha de fin del rango (ISO 8601)',
+        },
+        {
+          in: 'query',
+          name: 'retryCountGte',
+          schema: { type: 'integer', minimum: 0 },
+          description: 'Filtrar eventos con retryCount >= valor',
+        },
+        {
+          in: 'query',
+          name: 'retryCountLte',
+          schema: { type: 'integer', minimum: 0 },
+          description: 'Filtrar eventos con retryCount <= valor',
+        },
+        {
+          in: 'query',
+          name: 'cursor',
+          schema: { type: 'string', format: 'uuid' },
+          description: 'Cursor de paginación',
+        },
+        {
+          in: 'query',
+          name: 'limit',
+          schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 },
+          description: 'Cantidad de items por página',
+        },
+      ],
+      responses: {
+        200: {
+          description: 'Lista de outbox events',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['outboxEvents', 'meta'],
+                properties: {
+                  outboxEvents: {
+                    type: 'array',
+                    items: { $ref: '#/components/schemas/OutboxEventRecord' },
+                  },
+                  meta: { $ref: '#/components/schemas/CursorPaginationMeta' },
+                },
+              },
+            },
+          },
+        },
+        400: {
+          description: 'Filtros inválidos (status no permitido, retryCount no numérico)',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ValidationErrorResponse' },
+            },
+          },
+        },
+        401: { $ref: '#/components/responses/Unauthorized' },
+        403: { $ref: '#/components/responses/Forbidden' },
+        500: { $ref: '#/components/responses/InternalError' },
+      },
+    },
+  },
+
+  '/api/v1/system/outbox-events/{id}/retry': {
+    post: {
+      tags: ['System'],
+      summary: 'Reintentar outbox event fallido',
+      description: [
+        'Resetea el `retryCount` y el estado del `OutboxEvent` a `pending`,',
+        'limpia el error registrado y re-encola el evento en la Redis outbox queue.',
+        '',
+        '**Solo válido** para eventos en estado `failed` o `dead_lettered`.',
+        'Devuelve 400 si el estado es cualquier otro.',
+        '',
+        '⚠️ No comprueba idempotencia nuevamente — el evento ya existe en DB.',
+        'Verificar el estado antes de reintentar.',
+        '',
+        'Acceso exclusivo para **SUPERADMIN**.',
+      ].join('\n'),
+      security: [{ bearerAuth: [] }],
+      parameters: [
+        {
+          in: 'path',
+          name: 'id',
+          required: true,
+          schema: { type: 'string', format: 'uuid' },
+          description: 'ID del OutboxEvent a reintentar',
+        },
+      ],
+      responses: {
+        200: {
+          description: 'Evento re-encolado exitosamente',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                required: ['outboxEvent'],
+                properties: { outboxEvent: { $ref: '#/components/schemas/OutboxEventRecord' } },
+              },
+              example: {
+                outboxEvent: {
+                  id: '550e8400-e29b-41d4-a716-446655440030',
+                  conversationId: '550e8400-e29b-41d4-a716-446655440003',
+                  phone: '+5491187654321',
+                  status: 'pending',
+                  retryCount: 0,
+                  nextRetryAt: null,
+                  lastError: null,
+                  wamid: null,
+                  idempotencyKey: 'idem_outbox_001',
+                  createdAt: '2024-04-27T10:00:00.000Z',
+                  sentAt: null,
+                },
+              },
+            },
+          },
+        },
+        400: {
+          description: "El evento no está en estado 'failed' o 'dead_lettered', o el id no es UUID",
+          content: {
+            'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } },
+          },
+        },
+        401: { $ref: '#/components/responses/Unauthorized' },
+        403: { $ref: '#/components/responses/Forbidden' },
+        404: { $ref: '#/components/responses/NotFound' },
+        500: { $ref: '#/components/responses/InternalError' },
+      },
+    },
+  },
+
   '/api/v1/messages/{id}/attachments': {
     post: {
       tags: ['Messages'],
@@ -2663,6 +3191,7 @@ export const createSwaggerSpec = ({ port }: SwaggerSpecParams): OpenAPIDocument 
       '- **Messages**: Envío de mensajes salientes a ciudadanos vía WhatsApp y gestión de attachments.',
       '- **Conversations**: Listado, detalle, mensajes (GET/POST) y acciones (assign, transfer, close, reopen).',
       '- **Handover**: Transferencia de conversaciones bot↔agente y escalado.',
+      '- **System**: Observabilidad operacional — audit logs, inbox/outbox events (solo SUPERADMIN). Incluye retry/reprocess para eventos fallidos.',
       '- **Health**: Health check para monitoreo y load balancers.',
       '',
       '## Autenticación',
@@ -2683,6 +3212,10 @@ export const createSwaggerSpec = ({ port }: SwaggerSpecParams): OpenAPIDocument 
     { name: 'Messages', description: 'Envío de mensajes salientes a ciudadanos vía WhatsApp' },
     { name: 'Handover', description: 'Gestión de transferencia bot↔agente de conversaciones' },
     { name: 'Conversations', description: 'Operaciones y acciones sobre conversaciones' },
+    {
+      name: 'System',
+      description: 'Observabilidad operacional — audit logs, inbox/outbox events (solo SUPERADMIN)',
+    },
     { name: 'Health', description: 'Estado de la aplicación' },
   ],
   components: {
