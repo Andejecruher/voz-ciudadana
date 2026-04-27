@@ -17,6 +17,7 @@ import { DepartmentsService } from '../services/departments.service';
 import { InboxProcessorService } from '../services/events/inbox-processor.service';
 import { OutboxProcessorService } from '../services/events/outbox-processor.service';
 import { LockoutService } from '../services/lockout.service';
+import { MessageService } from '../services/message.service';
 import { NeighborhoodsService } from '../services/neighborhoods.service';
 import { ConversationStateMachine } from '../services/orchestrator/conversation-state-machine';
 import { PrismaService } from '../services/prisma.service';
@@ -76,6 +77,9 @@ export function registerRoutes(app: Express, deps: RouteDependencies): void {
   inboxProcessor.start();
   outboxProcessor.start();
 
+  // ── MessageService ─────────────────────────────────────────────────────────
+  const messageService = new MessageService(deps.prisma, messageRepo, outboxProcessor, deps.redis);
+
   // ── Controllers ────────────────────────────────────────────────────────────
   const webhookController = new WebhookController(
     deps.prisma,
@@ -83,14 +87,18 @@ export function registerRoutes(app: Express, deps: RouteDependencies): void {
     webhookParser,
     messageRepo,
   );
-  const messagesController = new MessagesController(outboxProcessor);
+  const messagesController = new MessagesController(outboxProcessor, messageService);
   const handoverController = new HandoverController(stateMachine, conversationRepo);
   const conversationsService = new ConversationsService(
     deps.prisma,
     conversationRepo,
     stateMachine,
   );
-  const conversationsController = new ConversationsController(conversationsService, auditService);
+  const conversationsController = new ConversationsController(
+    conversationsService,
+    auditService,
+    messageService,
+  );
 
   // ── Rutas ──────────────────────────────────────────────────────────────────
 

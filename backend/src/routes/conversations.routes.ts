@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { ConversationsController } from '../controllers/conversations.controller';
 import { jwtMiddleware } from '../middlewares/jwt.middleware';
+import { paginate } from '../middlewares/pagination';
 
 export function createConversationsRouter(controller: ConversationsController): Router {
   const router = Router();
@@ -15,7 +16,18 @@ export function createConversationsRouter(controller: ConversationsController): 
   // eslint-disable-next-line @typescript-eslint/no-misused-promises
   router.get('/:id', controller.getById);
 
-  // Acciones
+  // ── Sub-recurso mensajes ────────────────────────────────────────────────────
+
+  // Listar mensajes de una conversación (cursor pagination)
+  // eslint-disable-next-line @typescript-eslint/no-misused-promises
+  router.get('/:id/messages', paginate(), controller.getMessages);
+
+  // Enviar mensaje outbound desde el dashboard (append-only)
+  // eslint-disable-next-line @typescript-eslint/no-misused-promises
+  router.post('/:id/messages', controller.postMessage);
+
+  // ── Acciones de conversación ────────────────────────────────────────────────
+
   // eslint-disable-next-line @typescript-eslint/no-misused-promises
   router.post('/:id/assign', controller.assign);
   // eslint-disable-next-line @typescript-eslint/no-misused-promises

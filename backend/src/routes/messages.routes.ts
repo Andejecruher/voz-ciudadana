@@ -1,5 +1,5 @@
 /**
- * Messages routes — envío de mensajes outbound desde el dashboard.
+ * Messages routes — envío de mensajes outbound y gestión de attachments.
  * Requiere JWT auth.
  */
 import { Router } from 'express';
@@ -14,6 +14,10 @@ export function createMessagesRouter(controller: MessagesController): Router {
 
   // eslint-disable-next-line @typescript-eslint/no-misused-promises
   router.post('/text', controller.sendText);
+
+  // POST /messages/:id/attachments — registrar attachment sobre un mensaje existente
+  // eslint-disable-next-line @typescript-eslint/no-misused-promises
+  router.post('/:id/attachments', controller.addAttachment);
 
   return router;
 }
