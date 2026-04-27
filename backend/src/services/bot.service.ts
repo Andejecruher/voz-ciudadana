@@ -953,7 +953,7 @@ export class BotService {
    * @param phone - Número en formato E.164
    */
   async getSession(phone: string): Promise<BotSession> {
-    const raw = await this.redis.get(sessionKey(phone));
+    const raw = await this.redis.get(sessionKey(normalizePhoneForStorage(phone)));
     if (!raw) return { state: BotFsmState.NAME };
 
     try {
@@ -993,9 +993,10 @@ export class BotService {
     newState: BotFsmState,
     data: Partial<Omit<BotSession, 'state'>>,
   ): Promise<void> {
-    const current = await this.getSession(phone);
+    const normalized = normalizePhoneForStorage(phone);
+    const current = await this.getSession(normalized);
     const updated: BotSession = { ...current, ...data, state: newState };
-    await this.redis.set(sessionKey(phone), JSON.stringify(updated), SESSION_TTL_SECONDS);
+    await this.redis.set(sessionKey(normalized), JSON.stringify(updated), SESSION_TTL_SECONDS);
   }
 
   /**

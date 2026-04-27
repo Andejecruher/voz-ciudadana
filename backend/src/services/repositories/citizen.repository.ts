@@ -3,8 +3,8 @@
  * Reutiliza el modelo existente sin duplicar acceso.
  */
 import { LeadStatus, SourceChannel } from '@prisma/client';
-import { PrismaService } from '../prisma.service';
 import { normalizePhoneForStorage } from '../../utils/phone-normalizer';
+import { PrismaService } from '../prisma.service';
 
 export class CitizenRepository {
   constructor(private readonly prisma: PrismaService) {}

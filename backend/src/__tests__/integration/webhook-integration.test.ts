@@ -68,6 +68,7 @@ function makeBot(
 }
 
 const PHONE = '+521999888777';
+const PHONE_NORM = '521999888777'; // normalizePhoneForStorage(PHONE)
 const BASE_WAMID = 'wamid.integration';
 
 // ─── Test 1: Replay protection ────────────────────────────────────────────────
@@ -116,7 +117,7 @@ describe('Happy path: registro completo end-to-end', () => {
     await bot.handleMessage(PHONE, 'hola', `${BASE_WAMID}-1`, 'corr-hp1');
     const session = await bot.getSession(PHONE);
     expect(session.state).toBe(BotFsmState.NEIGHBORHOOD);
-    expect(wa.sendText).toHaveBeenCalledWith(PHONE, expect.stringContaining('Bienvenido'));
+    expect(wa.sendText).toHaveBeenCalledWith(PHONE_NORM, expect.stringContaining('Bienvenido'));
   });
 
   it('2: nombre completo → estado NEIGHBORHOOD → avanza a INTERESTS, muestra colonias', async () => {
@@ -124,12 +125,12 @@ describe('Happy path: registro completo end-to-end', () => {
     await bot.handleMessage(PHONE, 'Carlos López', `${BASE_WAMID}-2`, 'corr-hp2');
     const session = await bot.getSession(PHONE);
     expect(session.state).toBe(BotFsmState.INTERESTS);
-    expect(wa.sendText).toHaveBeenCalledWith(PHONE, expect.stringContaining('colonia'));
+    expect(wa.sendText).toHaveBeenCalledWith(PHONE_NORM, expect.stringContaining('colonia'));
   });
 
   it('3: índice de colonia → estado INTERESTS → avanza a AWAITING_INTERESTS', async () => {
     await bot.saveResponse(PHONE, BotFsmState.INTERESTS, {});
-    await bot.handleMessage(PHONE, '1', `${BASE_WAMID}-3`, 'corr-hp3');
+    await bot.handleMessage(PHONE, 'Centro', `${BASE_WAMID}-3`, 'corr-hp3');
     const session = await bot.getSession(PHONE);
     expect(session.state).toBe(BotFsmState.AWAITING_INTERESTS);
   });
@@ -145,7 +146,7 @@ describe('Happy path: registro completo end-to-end', () => {
     );
     const session = await bot.getSession(PHONE);
     expect(session.state).toBe(BotFsmState.COMPLETED);
-    expect(wa.sendText).toHaveBeenCalledWith(PHONE, expect.stringContaining('Registro completado'));
+    expect(wa.sendText).toHaveBeenCalledWith(PHONE_NORM, expect.stringContaining('Registro completado'));
   });
 });
 
@@ -164,7 +165,7 @@ describe('Non-text fallback durante registro', () => {
     await bot.handleNonTextMessage(PHONE, `${BASE_WAMID}-audio`, 'corr-nt1');
     
     expect(wa.sendText).toHaveBeenCalledWith(
-      PHONE,
+      PHONE_NORM,
       expect.stringContaining('solo puedo procesar mensajes de texto'),
     );
   });
@@ -227,6 +228,6 @@ describe('Completion handover: FSM Redis vs flowState DB', () => {
 
     const session = await bot.getSession(PHONE);
     expect(session.state).toBe(BotFsmState.COMPLETED);
-    expect(wa.sendText).toHaveBeenCalledWith(PHONE, expect.stringContaining('Bienvenido de vuelta'));
+    expect(wa.sendText).toHaveBeenCalledWith(PHONE_NORM, expect.stringContaining('Bienvenido de vuelta'));
   });
 });
