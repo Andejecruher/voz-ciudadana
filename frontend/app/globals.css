@@ -7,52 +7,52 @@
   /* Súmate — Guinda Morena + Gris Sobrio + Blanco */
 
   /* Backgrounds & surfaces */
-  --background: #FFFFFF;
+  --background: #ffffff;
   --foreground: #111827;
-  --card: #FFFFFF;
+  --card: #ffffff;
   --card-foreground: #111827;
-  --popover: #FFFFFF;
+  --popover: #ffffff;
   --popover-foreground: #111827;
 
   /* Primary — Guinda Morena */
-  --primary: #711B2C;
-  --primary-hover: #5A1522;
-  --primary-light: #9B3244;
-  --primary-foreground: #FFFFFF;
+  --primary: #711b2c;
+  --primary-hover: #5a1522;
+  --primary-light: #9b3244;
+  --primary-foreground: #ffffff;
 
   /* Secondary — Gris Sobrio */
   --secondary: #374151;
-  --secondary-foreground: #FFFFFF;
+  --secondary-foreground: #ffffff;
 
   /* Muted */
-  --muted: #F3F4F6;
-  --muted-foreground: #6B7280;
+  --muted: #f3f4f6;
+  --muted-foreground: #6b7280;
 
   /* Accent — warm gold for highlights */
-  --accent: #B8973A;
-  --accent-foreground: #FFFFFF;
+  --accent: #b8973a;
+  --accent-foreground: #ffffff;
 
   /* Destructive */
-  --destructive: #B91C1C;
-  --destructive-foreground: #FFFFFF;
+  --destructive: #b91c1c;
+  --destructive-foreground: #ffffff;
 
   /* Borders & inputs */
-  --border: #E5E7EB;
-  --input: #E5E7EB;
-  --ring: #711B2C;
+  --border: #e5e7eb;
+  --input: #e5e7eb;
+  --ring: #711b2c;
 
   /* Radius */
   --radius: 0.625rem;
 
   /* Sidebar — dark guinda */
-  --sidebar: #3D0D16;
-  --sidebar-foreground: #F9FAFB;
-  --sidebar-primary: #9B3244;
-  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar: #3d0d16;
+  --sidebar-foreground: #f9fafb;
+  --sidebar-primary: #9b3244;
+  --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #521320;
-  --sidebar-accent-foreground: #F9FAFB;
-  --sidebar-border: #5A1522;
-  --sidebar-ring: #711B2C;
+  --sidebar-accent-foreground: #f9fafb;
+  --sidebar-border: #5a1522;
+  --sidebar-ring: #711b2c;
 }
 
 @theme inline {
